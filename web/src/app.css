@@ -1,0 +1,170 @@
+/* ============================================================================
+   OpenBundestag — design system
+   Editorial / parliamentary: warm paper, deep ink, an expressive display serif
+   for headlines (Fraunces) over a precise sans for UI & data (Inter).
+   ========================================================================== */
+
+:root {
+	/* Surfaces */
+	--paper: #f4f0e6;
+	--paper-2: #ebe4d4;
+	--card: #fdfbf4;
+	--ink: #0f0e0b;
+	--ink-2: #3d3a32;
+	--ink-3: #7a7366;
+	--line: #ddd5c0;
+	--line-2: #c8bfa8;
+
+	/* Brand accent (electric blue) + vivid amber + crimson spark */
+	--accent: #2563eb;
+	--accent-2: #3b82f6;
+	--gold: #d97706;
+	--spark: #e11d48;
+
+	/* Type */
+	--serif: 'Fraunces', ui-serif, Georgia, 'Times New Roman', serif;
+	--sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+	/* Rhythm */
+	--maxw: 1180px;
+	--radius: 14px;
+	--radius-sm: 9px;
+	--shadow: 0 1px 2px rgba(27, 26, 23, 0.05), 0 12px 32px -16px rgba(27, 26, 23, 0.22);
+	--shadow-lg: 0 30px 70px -34px rgba(27, 26, 23, 0.4);
+	--ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--paper: #15140f;
+		--paper-2: #1d1b15;
+		--card: #1f1d16;
+		--ink: #f3efe6;
+		--ink-2: #c8c2b3;
+		--ink-3: #8f897a;
+		--line: #322f26;
+		--line-2: #454134;
+		--accent: #4d8ef7;
+		--accent-2: #7aaeff;
+		--gold: #fbbf24;
+		--spark: #fb7185;
+		--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 34px -16px rgba(0, 0, 0, 0.6);
+		--shadow-lg: 0 30px 70px -30px rgba(0, 0, 0, 0.7);
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	scroll-behavior: smooth;
+}
+
+body {
+	margin: 0;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: 16px;
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+	font-family: var(--serif);
+	font-weight: 600;
+	line-height: 1.08;
+	letter-spacing: -0.01em;
+	margin: 0 0 0.4em;
+}
+
+h1 {
+	font-size: clamp(2.6rem, 6vw, 4.6rem);
+	font-weight: 600;
+}
+h2 {
+	font-size: clamp(1.8rem, 3.4vw, 2.7rem);
+}
+h3 {
+	font-size: 1.35rem;
+}
+
+a {
+	color: var(--accent);
+	text-decoration: none;
+}
+a:hover {
+	text-decoration: underline;
+}
+
+.wrap {
+	width: 100%;
+	max-width: var(--maxw);
+	margin: 0 auto;
+	padding: 0 clamp(1rem, 4vw, 2.4rem);
+}
+
+.eyebrow {
+	font-family: var(--sans);
+	font-size: 0.78rem;
+	font-weight: 600;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-family: var(--sans);
+	font-weight: 600;
+	font-size: 0.98rem;
+	padding: 0.78rem 1.4rem;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	background: var(--ink);
+	color: var(--paper);
+	cursor: pointer;
+	transition:
+		transform 0.25s var(--ease),
+		box-shadow 0.25s var(--ease),
+		background 0.2s;
+}
+.btn:hover {
+	text-decoration: none;
+	transform: translateY(-2px);
+	box-shadow: var(--shadow);
+}
+.btn--ghost {
+	background: transparent;
+	color: var(--ink);
+	border-color: var(--line-2);
+}
+
+.card {
+	background: var(--card);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+/* Focus visibility for keyboard users */
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+	* {
+		animation-duration: 0.001ms !important;
+		transition-duration: 0.001ms !important;
+	}
+}

@@ -1,0 +1,48 @@
+name: Deploy API to Hugging Face Space
+
+# Ships the FastAPI query service (api/ + the shared src/queries.py) to its own
+# HF Space (Docker SDK). The 2 GB DuckDB DB is NOT shipped — it lives in the
+# public dataset and is downloaded by the API at startup.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "src/queries.py"
+      - ".github/workflows/deploy-api.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: hf-api-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install hf CLI
+        run: pip install -U "huggingface_hub[cli]"
+
+      - name: Assemble Space files
+        run: |
+          set -euo pipefail
+          rm -rf space && mkdir -p space/api space/src
+          # HF Spaces expects Dockerfile + README at the repo root.
+          cp api/Dockerfile api/README.md space/
+          cp api/__init__.py api/main.py api/requirements.txt space/api/
+          cp src/__init__.py src/queries.py space/src/
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          hf upload MissionJupiter/openbundestag-api space . \
+            --repo-type space \
+            --commit-message "Deploy ${GITHUB_SHA::7} from ${GITHUB_REF_NAME}"

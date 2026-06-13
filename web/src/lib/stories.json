@@ -1,0 +1,639 @@
+[
+  {
+    "word": "Klimawandel",
+    "blurb_de": "Vom Randthema zur Dauerdebatte — die Erwähnungen explodieren ab den 2000ern.",
+    "blurb_en": "From fringe topic to permanent debate — mentions explode from the 2000s on.",
+    "total": 3202,
+    "peak_year": 2022,
+    "peak_value": 338,
+    "top_party": "SPD",
+    "series": [
+      {
+        "year": 1982,
+        "value": 1
+      },
+      {
+        "year": 1991,
+        "value": 1
+      },
+      {
+        "year": 1993,
+        "value": 3
+      },
+      {
+        "year": 1995,
+        "value": 1
+      },
+      {
+        "year": 1996,
+        "value": 2
+      },
+      {
+        "year": 1997,
+        "value": 1
+      },
+      {
+        "year": 1999,
+        "value": 5
+      },
+      {
+        "year": 2000,
+        "value": 18
+      },
+      {
+        "year": 2001,
+        "value": 14
+      },
+      {
+        "year": 2002,
+        "value": 13
+      },
+      {
+        "year": 2003,
+        "value": 6
+      },
+      {
+        "year": 2004,
+        "value": 25
+      },
+      {
+        "year": 2005,
+        "value": 17
+      },
+      {
+        "year": 2006,
+        "value": 60
+      },
+      {
+        "year": 2007,
+        "value": 186
+      },
+      {
+        "year": 2008,
+        "value": 174
+      },
+      {
+        "year": 2009,
+        "value": 115
+      },
+      {
+        "year": 2010,
+        "value": 158
+      },
+      {
+        "year": 2011,
+        "value": 115
+      },
+      {
+        "year": 2012,
+        "value": 115
+      },
+      {
+        "year": 2013,
+        "value": 84
+      },
+      {
+        "year": 2014,
+        "value": 113
+      },
+      {
+        "year": 2015,
+        "value": 96
+      },
+      {
+        "year": 2016,
+        "value": 85
+      },
+      {
+        "year": 2017,
+        "value": 53
+      },
+      {
+        "year": 2018,
+        "value": 30
+      },
+      {
+        "year": 2019,
+        "value": 257
+      },
+      {
+        "year": 2020,
+        "value": 205
+      },
+      {
+        "year": 2021,
+        "value": 137
+      },
+      {
+        "year": 2022,
+        "value": 338
+      },
+      {
+        "year": 2023,
+        "value": 297
+      },
+      {
+        "year": 2024,
+        "value": 192
+      },
+      {
+        "year": 2025,
+        "value": 210
+      },
+      {
+        "year": 2026,
+        "value": 75
+      }
+    ]
+  },
+  {
+    "word": "Digitalisierung",
+    "blurb_de": "Praktisch unbekannt bis in die 1990er, heute in fast jeder Sitzungswoche.",
+    "blurb_en": "Virtually unknown until the 1990s, now in almost every sitting week.",
+    "total": 4857,
+    "peak_year": 2020,
+    "peak_value": 659,
+    "top_party": "CDU/CSU",
+    "series": [
+      {
+        "year": 1979,
+        "value": 1
+      },
+      {
+        "year": 1981,
+        "value": 1
+      },
+      {
+        "year": 1982,
+        "value": 3
+      },
+      {
+        "year": 1983,
+        "value": 10
+      },
+      {
+        "year": 1984,
+        "value": 11
+      },
+      {
+        "year": 1985,
+        "value": 3
+      },
+      {
+        "year": 1986,
+        "value": 10
+      },
+      {
+        "year": 1987,
+        "value": 1
+      },
+      {
+        "year": 1988,
+        "value": 3
+      },
+      {
+        "year": 1989,
+        "value": 1
+      },
+      {
+        "year": 1990,
+        "value": 1
+      },
+      {
+        "year": 1991,
+        "value": 4
+      },
+      {
+        "year": 1992,
+        "value": 3
+      },
+      {
+        "year": 1993,
+        "value": 1
+      },
+      {
+        "year": 1995,
+        "value": 2
+      },
+      {
+        "year": 1996,
+        "value": 3
+      },
+      {
+        "year": 1997,
+        "value": 3
+      },
+      {
+        "year": 1998,
+        "value": 2
+      },
+      {
+        "year": 1999,
+        "value": 2
+      },
+      {
+        "year": 2000,
+        "value": 2
+      },
+      {
+        "year": 2001,
+        "value": 4
+      },
+      {
+        "year": 2002,
+        "value": 4
+      },
+      {
+        "year": 2003,
+        "value": 3
+      },
+      {
+        "year": 2004,
+        "value": 3
+      },
+      {
+        "year": 2006,
+        "value": 4
+      },
+      {
+        "year": 2007,
+        "value": 1
+      },
+      {
+        "year": 2008,
+        "value": 11
+      },
+      {
+        "year": 2009,
+        "value": 10
+      },
+      {
+        "year": 2010,
+        "value": 22
+      },
+      {
+        "year": 2011,
+        "value": 37
+      },
+      {
+        "year": 2012,
+        "value": 58
+      },
+      {
+        "year": 2013,
+        "value": 64
+      },
+      {
+        "year": 2014,
+        "value": 109
+      },
+      {
+        "year": 2015,
+        "value": 108
+      },
+      {
+        "year": 2016,
+        "value": 242
+      },
+      {
+        "year": 2017,
+        "value": 156
+      },
+      {
+        "year": 2018,
+        "value": 101
+      },
+      {
+        "year": 2019,
+        "value": 606
+      },
+      {
+        "year": 2020,
+        "value": 659
+      },
+      {
+        "year": 2021,
+        "value": 347
+      },
+      {
+        "year": 2022,
+        "value": 565
+      },
+      {
+        "year": 2023,
+        "value": 580
+      },
+      {
+        "year": 2024,
+        "value": 466
+      },
+      {
+        "year": 2025,
+        "value": 464
+      },
+      {
+        "year": 2026,
+        "value": 166
+      }
+    ]
+  },
+  {
+    "word": "Kernenergie",
+    "blurb_de": "Die Kurve eines Streits, der Jahrzehnte das Parlament prägte.",
+    "blurb_en": "The curve of a conflict that shaped parliament for decades.",
+    "total": 4937,
+    "peak_year": 1986,
+    "peak_value": 207,
+    "top_party": "CDU/CSU",
+    "series": [
+      {
+        "year": 1955,
+        "value": 3
+      },
+      {
+        "year": 1956,
+        "value": 24
+      },
+      {
+        "year": 1957,
+        "value": 48
+      },
+      {
+        "year": 1958,
+        "value": 31
+      },
+      {
+        "year": 1959,
+        "value": 27
+      },
+      {
+        "year": 1960,
+        "value": 26
+      },
+      {
+        "year": 1961,
+        "value": 17
+      },
+      {
+        "year": 1962,
+        "value": 29
+      },
+      {
+        "year": 1963,
+        "value": 27
+      },
+      {
+        "year": 1964,
+        "value": 20
+      },
+      {
+        "year": 1965,
+        "value": 13
+      },
+      {
+        "year": 1966,
+        "value": 29
+      },
+      {
+        "year": 1967,
+        "value": 55
+      },
+      {
+        "year": 1968,
+        "value": 22
+      },
+      {
+        "year": 1969,
+        "value": 29
+      },
+      {
+        "year": 1970,
+        "value": 10
+      },
+      {
+        "year": 1971,
+        "value": 16
+      },
+      {
+        "year": 1972,
+        "value": 5
+      },
+      {
+        "year": 1973,
+        "value": 32
+      },
+      {
+        "year": 1974,
+        "value": 51
+      },
+      {
+        "year": 1975,
+        "value": 72
+      },
+      {
+        "year": 1976,
+        "value": 78
+      },
+      {
+        "year": 1977,
+        "value": 134
+      },
+      {
+        "year": 1978,
+        "value": 129
+      },
+      {
+        "year": 1979,
+        "value": 186
+      },
+      {
+        "year": 1980,
+        "value": 93
+      },
+      {
+        "year": 1981,
+        "value": 169
+      },
+      {
+        "year": 1982,
+        "value": 121
+      },
+      {
+        "year": 1983,
+        "value": 47
+      },
+      {
+        "year": 1984,
+        "value": 58
+      },
+      {
+        "year": 1985,
+        "value": 112
+      },
+      {
+        "year": 1986,
+        "value": 207
+      },
+      {
+        "year": 1987,
+        "value": 159
+      },
+      {
+        "year": 1988,
+        "value": 151
+      },
+      {
+        "year": 1989,
+        "value": 171
+      },
+      {
+        "year": 1990,
+        "value": 87
+      },
+      {
+        "year": 1991,
+        "value": 121
+      },
+      {
+        "year": 1992,
+        "value": 48
+      },
+      {
+        "year": 1993,
+        "value": 123
+      },
+      {
+        "year": 1994,
+        "value": 75
+      },
+      {
+        "year": 1995,
+        "value": 114
+      },
+      {
+        "year": 1996,
+        "value": 56
+      },
+      {
+        "year": 1997,
+        "value": 67
+      },
+      {
+        "year": 1998,
+        "value": 54
+      },
+      {
+        "year": 1999,
+        "value": 124
+      },
+      {
+        "year": 2000,
+        "value": 110
+      },
+      {
+        "year": 2001,
+        "value": 84
+      },
+      {
+        "year": 2002,
+        "value": 30
+      },
+      {
+        "year": 2003,
+        "value": 38
+      },
+      {
+        "year": 2004,
+        "value": 49
+      },
+      {
+        "year": 2005,
+        "value": 59
+      },
+      {
+        "year": 2006,
+        "value": 78
+      },
+      {
+        "year": 2007,
+        "value": 84
+      },
+      {
+        "year": 2008,
+        "value": 67
+      },
+      {
+        "year": 2009,
+        "value": 46
+      },
+      {
+        "year": 2010,
+        "value": 140
+      },
+      {
+        "year": 2011,
+        "value": 122
+      },
+      {
+        "year": 2012,
+        "value": 50
+      },
+      {
+        "year": 2013,
+        "value": 30
+      },
+      {
+        "year": 2014,
+        "value": 39
+      },
+      {
+        "year": 2015,
+        "value": 30
+      },
+      {
+        "year": 2016,
+        "value": 35
+      },
+      {
+        "year": 2017,
+        "value": 12
+      },
+      {
+        "year": 2018,
+        "value": 2
+      },
+      {
+        "year": 2019,
+        "value": 42
+      },
+      {
+        "year": 2020,
+        "value": 40
+      },
+      {
+        "year": 2021,
+        "value": 34
+      },
+      {
+        "year": 2022,
+        "value": 136
+      },
+      {
+        "year": 2023,
+        "value": 87
+      },
+      {
+        "year": 2024,
+        "value": 80
+      },
+      {
+        "year": 2025,
+        "value": 72
+      },
+      {
+        "year": 2026,
+        "value": 71
+      }
+    ]
+  }
+]
