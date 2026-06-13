@@ -29,7 +29,47 @@ export function setPartyMeta(colors: Record<string, string>, names: Record<strin
 }
 
 export function partyColor(party: string): string {
-	return colorMap[party] ?? FALLBACK_COLOR;
+	return darkSafe(colorMap[party] ?? FALLBACK_COLOR);
+}
+
+// Relative luminance of a #rrggbb colour (0 = black … 1 = white).
+function luminance(hex: string): number {
+	const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+	if (!m) return 0.5;
+	const n = parseInt(m[1], 16);
+	const r = (n >> 16) & 255,
+		g = (n >> 8) & 255,
+		b = n & 255;
+	const lin = (c: number) => {
+		const s = c / 255;
+		return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+	};
+	return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+// On the dark canvas, near-black party colours (CDU/CSU is officially #000000)
+// vanish. Lift only the darkest colours toward a neutral light so every party
+// stays legible while keeping its identity where one exists.
+function darkSafe(hex: string): string {
+	return luminance(hex) < 0.06 ? '#d8dce6' : hex;
+}
+
+/** Animate `0 → target`, calling `onTick` each frame. Returns a cancel fn. */
+export function countUp(target: number, onTick: (v: number) => void, dur = 900): () => void {
+	if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		onTick(target);
+		return () => {};
+	}
+	const start = performance.now();
+	let raf = 0;
+	const step = (now: number) => {
+		const p = Math.min(1, (now - start) / dur);
+		const eased = 1 - Math.pow(1 - p, 3);
+		onTick(Math.round(target * eased));
+		if (p < 1) raf = requestAnimationFrame(step);
+	};
+	raf = requestAnimationFrame(step);
+	return () => cancelAnimationFrame(raf);
 }
 
 export function partyFullName(party: string): string {

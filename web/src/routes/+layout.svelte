@@ -11,13 +11,13 @@
 <header class="site">
 	<div class="wrap bar">
 		<a class="brand" href="/">
-			<span class="mark">🏛️</span>
+			<span class="mark" aria-hidden="true"></span>
 			<span class="name">OpenBundestag</span>
 			<span class="tag">· {i18n.t('tagline')}</span>
 		</a>
 		<nav>
 			{#if !onExplore}
-				<a class="navlink" href="/explore">{i18n.t('cta_explore')}</a>
+				<a class="navlink" href="/explore">{i18n.t('cta_explore')} →</a>
 			{/if}
 			<LangToggle />
 		</nav>
@@ -44,63 +44,78 @@
 		position: sticky;
 		top: 0;
 		z-index: 30;
-		backdrop-filter: saturate(1.4) blur(10px);
-		background: color-mix(in srgb, var(--paper) 82%, transparent);
+		backdrop-filter: saturate(1.4) blur(14px);
+		background: color-mix(in srgb, var(--bg) 72%, transparent);
 		border-bottom: 1px solid var(--line);
 	}
 	.bar {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 64px;
+		height: 66px;
 	}
 	.brand {
 		display: flex;
-		align-items: baseline;
-		gap: 0.45rem;
+		align-items: center;
+		gap: 0.55rem;
 		color: var(--ink);
 		font-weight: 700;
 	}
 	.brand:hover {
-		text-decoration: none;
+		color: var(--ink);
 	}
 	.mark {
-		font-size: 1.2rem;
+		width: 16px;
+		height: 16px;
+		border-radius: 5px;
+		background: var(--grad);
+		box-shadow: var(--glow);
+		flex: none;
+		transition: transform 0.4s var(--spring);
+	}
+	.brand:hover .mark {
+		transform: rotate(45deg) scale(1.1);
 	}
 	.name {
-		font-family: var(--serif);
-		font-size: 1.2rem;
+		font-family: var(--display);
+		font-weight: 600;
+		font-size: 1.15rem;
+		letter-spacing: -0.02em;
 	}
 	.tag {
 		color: var(--ink-3);
 		font-weight: 500;
-		font-size: 0.9rem;
+		font-size: 0.88rem;
 	}
 	nav {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: 1.1rem;
 	}
 	.navlink {
 		font-weight: 600;
 		font-size: 0.92rem;
 		color: var(--ink);
+		transition: color 0.2s;
+	}
+	.navlink:hover {
+		color: var(--accent);
 	}
 	main {
 		min-height: 70vh;
 	}
 	footer.site {
 		border-top: 1px solid var(--line);
-		margin-top: 4rem;
-		padding: 2.4rem 0 3rem;
-		background: var(--paper-2);
+		margin-top: 5rem;
+		padding: 2.6rem 0 3.4rem;
+		background: var(--bg-2);
 	}
 	.ft-title {
 		font-weight: 600;
 		margin: 0 0 0.4rem;
 	}
 	.ft-body {
-		max-width: 60ch;
+		max-width: 62ch;
 		color: var(--ink-2);
 		font-size: 0.9rem;
 		margin: 0 0 0.6rem;

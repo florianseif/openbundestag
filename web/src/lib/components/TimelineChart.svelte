@@ -25,6 +25,7 @@
 
 	let hidden = $state<Set<string>>(new Set());
 	let hoverIdx = $state<number | null>(null);
+	let hoverParty = $state<string | null>(null);
 
 	// --- reshape into per-party series over sorted periods --------------------
 	const periods = $derived([...new Set(data.map((d) => d.period))].sort());
@@ -111,6 +112,15 @@
 		next.has(party) ? next.delete(party) : next.add(party);
 		hidden = next;
 	}
+
+	// Click anywhere on the plot → drill into the strongest party at that period.
+	function onclick() {
+		if (!hoverRows || !hoverRows.items.length) return;
+		onpick?.(hoverRows.period, hoverRows.items[0].party);
+	}
+
+	// Stable id so multiple charts don't collide on <defs>.
+	const uid = Math.random().toString(36).slice(2, 8);
 </script>
 
 <div class="legend">
@@ -119,6 +129,8 @@
 			class="chip"
 			class:off={hidden.has(party)}
 			onclick={() => toggle(party)}
+			onmouseenter={() => (hoverParty = party)}
+			onmouseleave={() => (hoverParty = null)}
 			title={partyFullName(party)}
 		>
 			<span class="dot" style:background={partyColor(party)}></span>
@@ -129,6 +141,23 @@
 
 <div class="chart" bind:clientWidth={cw}>
 	<svg viewBox="0 0 {cw} {H}" role="img" aria-label="Timeline chart">
+		<defs>
+			<!-- soft glow for the lines -->
+			<filter id="glow-{uid}" x="-20%" y="-20%" width="140%" height="140%">
+				<feGaussianBlur stdDeviation="3.4" result="b" />
+				<feMerge>
+					<feMergeNode in="b" />
+					<feMergeNode in="SourceGraphic" />
+				</feMerge>
+			</filter>
+			{#each visible as party (party)}
+				<linearGradient id="fill-{uid}-{party}" x1="0" x2="0" y1="0" y2="1">
+					<stop offset="0%" stop-color={partyColor(party)} stop-opacity="0.34" />
+					<stop offset="100%" stop-color={partyColor(party)} stop-opacity="0.02" />
+				</linearGradient>
+			{/each}
+		</defs>
+
 		<!-- gridlines + y axis -->
 		{#each yTicks as t (t)}
 			<line x1={m.l} x2={cw - m.r} y1={y(t)} y2={y(t)} class="grid" />
@@ -143,19 +172,31 @@
 
 		{#if stacked}
 			{#each stacked_series as s (s.key)}
-				<path d={areaPath(s)} fill={partyColor(s.key)} fill-opacity="0.85" stroke="none" />
-			{/each}
-		{:else}
-			{#each visible as party (party)}
 				<path
-					d={linePath(party)}
-					fill="none"
-					stroke={partyColor(party)}
-					stroke-width="2.5"
-					stroke-linejoin="round"
-					stroke-linecap="round"
+					d={areaPath(s)}
+					fill="url(#fill-{uid}-{s.key})"
+					stroke={partyColor(s.key)}
+					stroke-width="1.5"
+					stroke-opacity="0.9"
+					class="area"
 				/>
 			{/each}
+		{:else}
+			<g filter="url(#glow-{uid})">
+				{#each visible as party (party)}
+					<path
+						d={linePath(party)}
+						fill="none"
+						stroke={partyColor(party)}
+						stroke-width="2.4"
+						stroke-linejoin="round"
+						stroke-linecap="round"
+						pathLength="1"
+						class="line"
+						class:dim={hoverParty && hoverParty !== party}
+					/>
+				{/each}
+			</g>
 		{/if}
 
 		<!-- hover crosshair + markers -->
@@ -172,13 +213,14 @@
 					<circle
 						cx={x(hoverRows.date)}
 						cy={y(r.value)}
-						r="5"
+						r="5.5"
 						fill={partyColor(r.party)}
-						stroke="var(--card)"
-						stroke-width="2"
+						stroke="var(--surface)"
+						stroke-width="2.5"
 						class="marker"
 						role="button"
 						tabindex="0"
+						aria-label="{r.party} {hoverRows.period}"
 						onclick={() => onpick?.(hoverRows.period, r.party)}
 						onkeydown={(e) => e.key === 'Enter' && onpick?.(hoverRows.period, r.party)}
 					/>
@@ -193,8 +235,10 @@
 			width={Math.max(0, cw - m.l - m.r)}
 			height={H - m.t - m.b}
 			fill="transparent"
+			class="capture"
 			onmousemove={onmove}
 			onmouseleave={() => (hoverIdx = null)}
+			{onclick}
 			role="presentation"
 		/>
 	</svg>
@@ -231,13 +275,20 @@
 		padding: 0.28rem 0.7rem;
 		border-radius: 999px;
 		border: 1px solid var(--line-2);
-		background: var(--card);
+		background: var(--surface-2);
 		color: var(--ink-2);
 		cursor: pointer;
-		transition: opacity 0.2s;
+		transition:
+			opacity 0.2s,
+			border-color 0.2s,
+			color 0.2s;
+	}
+	.chip:hover {
+		color: var(--ink);
+		border-color: var(--line-3);
 	}
 	.chip.off {
-		opacity: 0.38;
+		opacity: 0.34;
 	}
 	.dot {
 		width: 9px;
@@ -259,9 +310,38 @@
 		stroke: var(--line);
 		stroke-width: 1;
 	}
+	.capture {
+		cursor: pointer;
+	}
+	.line {
+		animation: draw 1.1s var(--ease) forwards;
+		transition: opacity 0.25s;
+	}
+	.line.dim {
+		opacity: 0.18;
+	}
+	.area {
+		animation: fadein 0.6s var(--ease) backwards;
+	}
+	@keyframes draw {
+		from {
+			stroke-dasharray: 1;
+			stroke-dashoffset: 1;
+		}
+		to {
+			stroke-dasharray: 1;
+			stroke-dashoffset: 0;
+		}
+	}
+	@keyframes fadein {
+		from {
+			opacity: 0;
+		}
+	}
 	.crosshair {
-		stroke: var(--ink-3);
-		stroke-dasharray: 3 3;
+		stroke: var(--accent);
+		stroke-opacity: 0.5;
+		stroke-dasharray: 3 4;
 		stroke-width: 1;
 	}
 	.ytick,
@@ -272,18 +352,23 @@
 	}
 	.marker {
 		cursor: pointer;
+		transition: r 0.15s var(--spring);
+	}
+	.marker:hover {
+		r: 7.5;
 	}
 	.tooltip {
 		position: absolute;
 		top: 8px;
 		pointer-events: none;
-		background: var(--card);
+		background: var(--glass);
+		backdrop-filter: blur(14px);
 		border: 1px solid var(--line-2);
 		border-radius: var(--radius-sm);
-		box-shadow: var(--shadow);
-		padding: 0.55rem 0.7rem;
+		box-shadow: var(--shadow-lg);
+		padding: 0.6rem 0.75rem;
 		font-size: 0.78rem;
-		min-width: 150px;
+		min-width: 160px;
 	}
 	.trow {
 		display: flex;

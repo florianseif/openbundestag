@@ -33,7 +33,10 @@
 			<path
 				d={gen(a)}
 				fill={a.data.color}
-				opacity={hover == null || hover === i ? 1 : 0.4}
+				stroke="var(--surface)"
+				stroke-width="1.5"
+				opacity={hover == null || hover === i ? 1 : 0.32}
+				transform={hover === i ? 'scale(1.04)' : 'scale(1)'}
 				onmouseenter={() => (hover = i)}
 				onmouseleave={() => (hover = null)}
 				role="presentation"
@@ -60,7 +63,10 @@
 	}
 	path {
 		cursor: pointer;
-		transition: opacity 0.2s;
+		transform-origin: center;
+		transition:
+			opacity 0.2s,
+			transform 0.25s var(--spring);
 	}
 	.center-v {
 		fill: var(--ink);

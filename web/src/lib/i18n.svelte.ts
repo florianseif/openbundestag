@@ -70,13 +70,29 @@ export const STRINGS: Dict = {
 	error: { de: 'Etwas ist schiefgelaufen.', en: 'Something went wrong.' },
 	retry: { de: 'Erneut versuchen', en: 'Retry' },
 
-	// Drill-down (UI lands later)
-	read_passage: { de: 'Passage lesen', en: 'Read passage' },
-	drilldown_soon: {
-		de: 'Bald: Klicke auf einen Punkt, um die Passage zu lesen und die Rede herunterzuladen.',
-		en: 'Coming soon: click a point to read the passage and download the speech.'
+	// Drill-down
+	read_passage: { de: 'Passagen lesen', en: 'Read passages' },
+	drilldown_hint: {
+		de: 'Klicke auf einen Punkt im Diagramm, um die Reden zu lesen und herunterzuladen.',
+		en: 'Click any point in the chart to read and download the speeches behind it.'
+	},
+	matching_speeches: { de: 'passende Reden', en: 'matching speeches' },
+	download: { de: 'Herunterladen', en: 'Download' },
+	term_short: { de: 'WP', en: 'Term' },
+	session: { de: 'Sitzung', en: 'Session' },
+	fulltext_unavailable: {
+		de: 'Volltext in dieser Datenbank-Version nicht enthalten (Speicher­optimiert). Metadaten siehe oben.',
+		en: 'Full text not included in this database build (storage-optimised). See metadata above.'
 	},
 	close: { de: 'Schließen', en: 'Close' },
+
+	// Explorer dashboard
+	overview: { de: 'Überblick', en: 'Overview' },
+	leading_party: { de: 'Führende Partei', en: 'Leading party' },
+	timeline_over_time: { de: 'Verlauf über die Zeit', en: 'Usage over time' },
+	by_party_title: { de: 'Verteilung nach Partei', en: 'Distribution by party' },
+	top_speakers_title: { de: 'Wer spricht am meisten?', en: 'Who speaks the most?' },
+	reset: { de: 'Zurücksetzen', en: 'Reset' },
 
 	footer_data: { de: 'Datenquelle & Lizenz', en: 'Data source & licence' },
 	footer_body: {

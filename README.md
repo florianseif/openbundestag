@@ -229,10 +229,12 @@ openbundestag/
 
 ## Website (dedicated public site)
 
-Beyond the Streamlit app there is a bespoke website (on the `feature/web` branch):
-a **SvelteKit** frontend (`web/`) with a scrollytelling intro and a live explorer,
-backed by a small **FastAPI** service (`api/`) over the same DuckDB query engine
-(`src/queries.py`). All free to host:
+Beyond the Streamlit app there is a bespoke website: a **SvelteKit** frontend
+(`web/`) with a scrollytelling intro and a live explorer, backed by a small
+**FastAPI** service (`api/`) over the same DuckDB query engine (`src/queries.py`).
+It uses a committed dark **"data-noir"** design — an obsidian canvas where the
+official party colours glow, an aurora gradient accent, glass panels, animated
+stat count-ups and chart draw-ins. All free to host:
 
 - **Frontend** → Cloudflare Pages (unlimited bandwidth, free custom domain + SSL)
 - **API** → a Hugging Face Space (CPU Basic: 2 vCPU / 16 GB RAM)
@@ -271,14 +273,14 @@ API via `web/.env` (`PUBLIC_API_BASE=http://127.0.0.1:8000`; copy from
 Notes:
 - **Order doesn't matter.** If the API isn't up yet, the explorer shows a
   "waking the database…" state and connects automatically once it is.
-- **Drill-down snippets stay empty** on a `--slim` database (no raw text) — every
-  other view works fully.
+- **Drill-down** is live: click any point on the timeline to open a modal of the
+  matching speeches, expand one to read its full text with the keyword
+  highlighted, and download it as a `.txt`. The full text + paragraph snippets
+  require a **non-slim** DB (the `--slim` build drops the raw `speech_content`
+  they need); on a `--slim` DB the reader degrades gracefully to metadata.
 - Stop either server with `Ctrl-C`.
 
-See [`web/README.md`](web/README.md) and [`api/README.md`](api/README.md). A
-future drill-down feature (click a point → read the passage → download the
-speech) is already architected in the API; its snippets require a **non-slim**
-DB (the `--slim` build drops the raw text it needs).
+See [`web/README.md`](web/README.md) and [`api/README.md`](api/README.md).
 
 ---
 

@@ -21,7 +21,12 @@
 				{#if b.sub}<span class="sub">{b.sub}</span>{/if}
 			</div>
 			<div class="track">
-				<div class="fill" style:width="{(b.value / maxVal) * 100}%" style:background={b.color}></div>
+				<div
+					class="fill"
+					style:width="{(b.value / maxVal) * 100}%"
+					style:background={b.color}
+					style:color={b.color}
+				></div>
 			</div>
 			<div class="val">{formatNumber(b.value, i18n.lang)}</div>
 		</div>
@@ -60,14 +65,17 @@
 	}
 	.track {
 		height: 22px;
-		background: var(--paper-2);
-		border-radius: 6px;
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+		border-radius: 7px;
 		overflow: hidden;
 	}
 	.fill {
 		height: 100%;
 		border-radius: 6px;
 		transform-origin: left;
+		filter: saturate(1.05) brightness(1.05);
+		box-shadow: 0 0 18px -4px currentColor;
 		animation: grow 0.7s var(--ease) backwards;
 		animation-delay: calc(var(--i) * 30ms);
 	}

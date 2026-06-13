@@ -14,6 +14,7 @@ import type {
 	Totals,
 	Politician,
 	SpeechPage,
+	SpeechFull,
 	Filters
 } from './types';
 
@@ -95,5 +96,7 @@ export const api = {
 	total: (f: Filters, fetcher?: FetchLike) => get<Totals>(`/api/total?${buildQuery(f)}`, fetcher),
 
 	speeches: (f: Filters, limit = 20, offset = 0, fetcher?: FetchLike) =>
-		get<SpeechPage>(`/api/speeches?${buildQuery(f, { limit, offset })}`, fetcher)
+		get<SpeechPage>(`/api/speeches?${buildQuery(f, { limit, offset })}`, fetcher),
+
+	speech: (id: number, fetcher?: FetchLike) => get<SpeechFull>(`/api/speech/${id}`, fetcher)
 };

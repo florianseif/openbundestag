@@ -67,6 +67,20 @@ export interface SpeechPage {
 	has_snippet: boolean;
 }
 
+export interface SpeechFull {
+	id: number;
+	session: string;
+	electoral_term: number;
+	date: string;
+	politician_id: number;
+	first_name: string;
+	last_name: string;
+	party: string;
+	position_short: string;
+	position_long: string | null;
+	speech_content?: string;
+}
+
 export type Granularity = 'Monthly' | 'Quarterly';
 export type CountMode = 'speeches' | 'occurrences';
 

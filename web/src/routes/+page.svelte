@@ -88,20 +88,33 @@
 	/* ── Hero ─────────────────────────────────────────────────────────── */
 	.hero {
 		position: relative;
-		background: #07091a;
+		background: var(--bg);
 		overflow: hidden;
 		padding-bottom: clamp(4rem, 10vh, 7rem);
 	}
 
-	/* Subtle radial nebula in background */
+	/* Aurora nebula in background */
 	.hero::before {
 		content: '';
 		position: absolute;
 		inset: 0;
 		background:
-			radial-gradient(70% 60% at 68% 40%, rgba(37, 99, 235, 0.18) 0%, transparent 70%),
-			radial-gradient(50% 40% at 20% 80%, rgba(217, 119, 6, 0.10) 0%, transparent 65%),
-			radial-gradient(40% 35% at 85% 85%, rgba(225, 29, 72, 0.08) 0%, transparent 60%);
+			radial-gradient(60% 55% at 70% 36%, rgba(107, 145, 255, 0.22) 0%, transparent 70%),
+			radial-gradient(50% 45% at 18% 78%, rgba(169, 139, 255, 0.16) 0%, transparent 68%),
+			radial-gradient(42% 38% at 88% 84%, rgba(255, 142, 198, 0.12) 0%, transparent 62%);
+		pointer-events: none;
+		z-index: 0;
+	}
+	/* faint grid texture */
+	.hero::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-image:
+			linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+		background-size: 64px 64px;
+		mask-image: radial-gradient(70% 70% at 50% 30%, #000 0%, transparent 80%);
 		pointer-events: none;
 		z-index: 0;
 	}
@@ -131,10 +144,10 @@
 		font-weight: 600;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		color: #4d8ef7;
+		color: var(--accent);
 		margin-bottom: 1.1rem;
 	}
-	.sep { color: rgba(77, 142, 247, 0.4); }
+	.sep { color: rgba(107, 145, 255, 0.4); }
 
 	h1 {
 		font-size: clamp(3.4rem, 8vw, 6.2rem);
@@ -181,7 +194,7 @@
 	.search input::placeholder { color: rgba(244, 240, 230, 0.38); }
 	.search input:focus {
 		outline: none;
-		border-color: rgba(77, 142, 247, 0.6);
+		border-color: rgba(107, 145, 255, 0.6);
 		background: rgba(255, 255, 255, 0.11);
 	}
 
@@ -195,17 +208,17 @@
 		padding: 0.88rem 1.5rem;
 		border-radius: 999px;
 		border: none;
-		background: var(--accent);
-		color: #fff;
+		background: var(--grad);
+		color: #0a0a12;
 		cursor: pointer;
 		white-space: nowrap;
-		transition: transform 0.22s var(--ease), box-shadow 0.22s var(--ease), background 0.18s;
-		box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+		transition: transform 0.22s var(--spring), box-shadow 0.22s var(--ease), filter 0.18s;
+		box-shadow: var(--glow);
 	}
 	.btn-hero:hover {
 		transform: translateY(-2px);
-		background: #1d4ed8;
-		box-shadow: 0 8px 28px -8px rgba(37, 99, 235, 0.6);
+		filter: brightness(1.06);
+		box-shadow: 0 0 50px -6px rgba(107, 145, 255, 0.7);
 	}
 
 	.quick {
@@ -225,9 +238,9 @@
 		transition: border-color 0.18s, color 0.18s, background 0.18s;
 	}
 	.quick-chip:hover {
-		border-color: rgba(77, 142, 247, 0.55);
+		border-color: rgba(107, 145, 255, 0.55);
 		color: #f4f0e6;
-		background: rgba(37, 99, 235, 0.14);
+		background: rgba(107, 145, 255, 0.14);
 		text-decoration: none;
 	}
 
@@ -323,15 +336,24 @@
 
 	/* ── CTA band ─────────────────────────────────────────────────────── */
 	.cta-band {
+		position: relative;
 		margin-top: 3rem;
-		padding: clamp(3rem, 8vw, 5rem) 0;
-		background: var(--ink);
-		color: var(--paper);
+		padding: clamp(3.5rem, 9vw, 6rem) 0;
 		text-align: center;
+		overflow: hidden;
+		border-top: 1px solid var(--line);
+		background:
+			radial-gradient(60% 120% at 50% 0%, rgba(169, 139, 255, 0.16), transparent 70%),
+			var(--bg-2);
 	}
-	.cta-band :global(h2) { color: var(--paper); }
+	.cta-band :global(h2) {
+		background: var(--grad);
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+	}
 	.cta-band .lede {
-		color: rgba(244, 240, 230, 0.65);
+		color: var(--ink-2);
 		margin: 0 auto 1.8rem;
 		max-width: 52ch;
 	}
