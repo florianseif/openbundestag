@@ -1,0 +1,270 @@
+/* ============================================================================
+   OpenBundestag — design system  ·  "Chamber after dark"
+   A deep obsidian canvas where the official party colours glow. Space Grotesk
+   for display + numerals, Inter for UI/data. Glass panels, soft depth, a
+   single signature aurora gradient. One committed dark theme — no beige.
+   ========================================================================== */
+
+:root {
+	/* Canvas & elevation */
+	--bg: #07080c;
+	--bg-2: #0a0c12;
+	--surface: #11131c; /* solid panel */
+	--surface-2: #161925;
+	--surface-3: #1d2130;
+	--glass: rgba(22, 25, 37, 0.62);
+	--glass-2: rgba(255, 255, 255, 0.04);
+
+	/* Hairlines */
+	--line: rgba(255, 255, 255, 0.07);
+	--line-2: rgba(255, 255, 255, 0.13);
+	--line-3: rgba(255, 255, 255, 0.22);
+
+	/* Ink */
+	--ink: #eef1f8;
+	--ink-2: #9aa2b4;
+	--ink-3: #626a7d;
+
+	/* Accents — electric periwinkle → violet → rose aurora */
+	--accent: #6b91ff;
+	--accent-2: #a98bff;
+	--accent-3: #ff8ec6;
+	--grad: linear-gradient(115deg, #6b91ff 0%, #a98bff 52%, #ff8ec6 100%);
+	--grad-soft: linear-gradient(
+		115deg,
+		rgba(107, 145, 255, 0.16),
+		rgba(169, 139, 255, 0.16) 52%,
+		rgba(255, 142, 198, 0.16)
+	);
+	--gold: #ffce5c;
+	--spark: #ff5d7d;
+
+	/* Type */
+	--display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+	--sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+	/* Rhythm */
+	--maxw: 1240px;
+	--radius: 18px;
+	--radius-sm: 12px;
+	--radius-lg: 26px;
+
+	/* Depth */
+	--shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 18px 50px -28px rgba(0, 0, 0, 0.85);
+	--shadow-lg: 0 40px 100px -40px rgba(0, 0, 0, 0.92);
+	--glow: 0 0 40px -8px rgba(107, 145, 255, 0.5);
+
+	--ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+	/* Legacy aliases — keep older components coherent on the dark theme. */
+	--paper: var(--bg);
+	--paper-2: var(--surface-2);
+	--card: var(--surface);
+	--serif: var(--display);
+
+	color-scheme: dark;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	scroll-behavior: smooth;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: 16px;
+	font-feature-settings: 'cv05' 1, 'ss01' 1;
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+	/* Ambient aurora wash behind everything */
+	background-image:
+		radial-gradient(60% 50% at 78% -5%, rgba(107, 145, 255, 0.1), transparent 70%),
+		radial-gradient(45% 40% at 8% 8%, rgba(169, 139, 255, 0.07), transparent 70%);
+	background-attachment: fixed;
+}
+
+h1,
+h2,
+h3 {
+	font-family: var(--display);
+	font-weight: 600;
+	line-height: 1.04;
+	letter-spacing: -0.02em;
+	margin: 0 0 0.4em;
+}
+
+h1 {
+	font-size: clamp(2.8rem, 6.5vw, 5rem);
+	font-weight: 700;
+}
+h2 {
+	font-size: clamp(1.9rem, 3.6vw, 2.9rem);
+}
+h3 {
+	font-size: 1.3rem;
+	letter-spacing: -0.01em;
+}
+
+a {
+	color: var(--accent);
+	text-decoration: none;
+}
+a:hover {
+	color: var(--accent-2);
+}
+
+::selection {
+	background: rgba(169, 139, 255, 0.32);
+	color: #fff;
+}
+
+.wrap {
+	width: 100%;
+	max-width: var(--maxw);
+	margin: 0 auto;
+	padding: 0 clamp(1rem, 4vw, 2.4rem);
+}
+
+.eyebrow {
+	font-family: var(--sans);
+	font-size: 0.74rem;
+	font-weight: 600;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+}
+
+/* Gradient text helper */
+.grad-text {
+	background: var(--grad);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	color: transparent;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.55rem;
+	font-family: var(--sans);
+	font-weight: 600;
+	font-size: 0.98rem;
+	padding: 0.82rem 1.5rem;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	background: var(--grad);
+	color: #0a0a12;
+	cursor: pointer;
+	position: relative;
+	transition:
+		transform 0.3s var(--spring),
+		box-shadow 0.3s var(--ease),
+		filter 0.2s;
+	box-shadow: var(--glow);
+}
+.btn:hover {
+	transform: translateY(-2px);
+	color: #0a0a12;
+	box-shadow:
+		0 0 50px -6px rgba(107, 145, 255, 0.7),
+		0 14px 30px -14px rgba(0, 0, 0, 0.8);
+}
+.btn--ghost {
+	background: var(--glass-2);
+	color: var(--ink);
+	border-color: var(--line-2);
+	box-shadow: none;
+	backdrop-filter: blur(8px);
+}
+.btn--ghost:hover {
+	color: var(--ink);
+	border-color: var(--line-3);
+	background: rgba(255, 255, 255, 0.07);
+	box-shadow: none;
+}
+
+/* ── Cards / glass panels ──────────────────────────────────────────────── */
+.card {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+.glass {
+	background: var(--glass);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	backdrop-filter: blur(18px) saturate(1.2);
+	-webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+/* ── CSS tooltips (data-tip attribute) ─────────────────────────────────── */
+[data-tip] {
+	position: relative;
+}
+[data-tip]::after {
+	content: attr(data-tip);
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--surface-3);
+	border: 1px solid var(--line-2);
+	border-radius: 8px;
+	padding: 0.3rem 0.7rem;
+	font-size: 0.73rem;
+	font-family: var(--sans);
+	font-weight: 400;
+	white-space: nowrap;
+	color: var(--ink-2);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.15s;
+	z-index: 200;
+	box-shadow: var(--shadow);
+}
+[data-tip]:hover::after {
+	opacity: 1;
+}
+
+/* Focus visibility */
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+	width: 11px;
+	height: 11px;
+}
+::-webkit-scrollbar-thumb {
+	background: var(--line-2);
+	border-radius: 99px;
+	border: 3px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+	background: var(--line-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+	* {
+		animation-duration: 0.001ms !important;
+		transition-duration: 0.001ms !important;
+	}
+}

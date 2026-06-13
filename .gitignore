@@ -1,0 +1,20 @@
+.venv/
+data/
+logs/
+*.log
+__pycache__/
+node_modules
+.next
+out
+.DS_Store
+*.egg-info
+
+# Local build artifact — never commit (2.3GB DuckDB)
+open_discourse.db
+openbundestag-data.db
+
+# Claude Code local harness config
+.claude/
+
+# Claude auto-memory (local only)
+memory/
