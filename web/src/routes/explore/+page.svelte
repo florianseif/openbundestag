@@ -8,7 +8,6 @@
 	import type {
 		Meta,
 		Filters,
-		Granularity,
 		CountMode,
 		TimelinePoint,
 		PartyCount,
@@ -35,9 +34,9 @@
 		parties: sp.getAll('parties'),
 		terms: sp.getAll('terms').map(Number).filter(Boolean),
 		politician_id: null,
-		date_from: sp.get('from') ?? '2010-01-01',
-		date_to: sp.get('to') ?? '2026-12-31',
-		granularity: (sp.get('gran') as Granularity) ?? 'Quarterly',
+		date_from: null,
+		date_to: null,
+		granularity: 'Quarterly',
 		count_mode: (sp.get('mode') as CountMode) ?? 'occurrences'
 	};
 	let filters = $state<Filters>({ ...DEFAULTS });
@@ -78,22 +77,6 @@
 		}
 	});
 
-	// --- year range derived from meta ----------------------------------------
-	let yFrom = $state(+(filters.date_from ?? '2010-01-01').slice(0, 4));
-	let yTo = $state(+(filters.date_to ?? '2026-12-31').slice(0, 4));
-	$effect(() => {
-		filters.date_from = `${yFrom}-01-01`;
-		filters.date_to = `${yTo}-12-31`;
-	});
-	const years = $derived(
-		meta
-			? Array.from(
-					{ length: +meta.max_date.slice(0, 4) - +meta.min_date.slice(0, 4) + 1 },
-					(_, i) => +meta.min_date.slice(0, 4) + i
-				)
-			: []
-	);
-
 	// --- result state ---------------------------------------------------------
 	let total = $state<Totals | null>(null);
 	let timeline = $state<TimelinePoint[]>([]);
@@ -111,6 +94,11 @@
 			const m = await api.meta();
 			setPartyMeta(m.party_colors, m.party_full_names);
 			meta = m;
+			// Default to current legislature if no terms were provided via URL
+			if (filters.terms.length === 0) {
+				const latestTerm = Math.max(...m.terms.map((t) => t.term));
+				filters.terms = [latestTerm];
+			}
 		} catch (e) {
 			const err = e as ApiError;
 			bootError = err.status === 0 ? null : err.message;
@@ -174,12 +162,10 @@
 		for (const t of f.terms) url.searchParams.append('terms', String(t));
 		if (polId != null) url.searchParams.set('pol', String(polId));
 		else url.searchParams.delete('pol');
-		if (f.date_from && f.date_from !== '2010-01-01') url.searchParams.set('from', f.date_from);
-		else url.searchParams.delete('from');
-		if (f.date_to && f.date_to !== '2026-12-31') url.searchParams.set('to', f.date_to);
-		else url.searchParams.delete('to');
-		if (f.granularity !== 'Quarterly') url.searchParams.set('gran', f.granularity);
-		else url.searchParams.delete('gran');
+		// Legacy date params no longer used — clean them up
+		url.searchParams.delete('from');
+		url.searchParams.delete('to');
+		url.searchParams.delete('gran');
 		if (f.count_mode !== 'occurrences') url.searchParams.set('mode', f.count_mode);
 		else url.searchParams.delete('mode');
 		replaceState(url, page.state);
@@ -193,11 +179,18 @@
 	}
 
 	function reset() {
-		filters = { ...DEFAULTS, word: filters.word };
-		yFrom = 2010;
-		yTo = 2026;
+		const latestTerm = meta ? Math.max(...meta.terms.map((t) => t.term)) : 20;
+		filters = { ...DEFAULTS, word: filters.word, terms: [latestTerm] };
 		clearPol();
 		topN = 15;
+	}
+
+	function toggleTerm(term: number) {
+		if (filters.terms.includes(term)) {
+			filters.terms = filters.terms.filter((t) => t !== term);
+		} else {
+			filters.terms = [...filters.terms, term].sort((a, b) => a - b);
+		}
 	}
 
 	// --- drill-down -----------------------------------------------------------
@@ -206,7 +199,7 @@
 	function pick(period: string, party: string) {
 		const start = new Date(period);
 		const end = new Date(start);
-		end.setMonth(end.getMonth() + (filters.granularity === 'Monthly' ? 1 : 3));
+		end.setMonth(end.getMonth() + 3);
 		drill = {
 			q: { ...filters, politician_id: polId, parties: [party], date_from: period, date_to: end.toISOString().slice(0, 10) },
 			title: `${party} · ${period.slice(0, 7)}`
@@ -241,6 +234,11 @@
 	);
 
 	const speechFilters = $derived({ ...filters, politician_id: polId });
+
+	// Terms sorted newest-first for the chip row
+	const sortedTerms = $derived(
+		meta ? [...meta.terms].sort((a, b) => b.term - a.term) : []
+	);
 </script>
 
 <svelte:head><title>{filters.word} · OpenBundestag</title></svelte:head>
@@ -260,12 +258,12 @@
 {:else}
 	<div class="explore wrap">
 
-		<!-- ── Inline filter bar ─────────────────────────────────────────── -->
+		<!-- ── Filter bar ─────────────────────────────────────────────────── -->
 		<div class="filter-bar glass">
-			<!-- Search row -->
-			<div class="search-row">
+			<!-- Search hero — large and central -->
+			<div class="search-hero">
 				<div class="search-input-wrap">
-					<svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+					<svg class="search-icon" width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
 						<circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
 						<line x1="10" y1="10" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
 					</svg>
@@ -289,40 +287,32 @@
 				{/each}
 			</div>
 
-			<!-- Controls row -->
+			<!-- Wahlperioden term chips -->
+			<div class="term-row">
+				<span class="term-row-lbl">Wahlperiode</span>
+				<div class="term-chips">
+					<button
+						class="term-chip all-chip"
+						class:active={filters.terms.length === 0}
+						onclick={() => (filters.terms = [])}
+					>Alle</button>
+					{#each sortedTerms as t (t.term)}
+						{@const years = t.label.match(/\((.+?)\)/)?.[1] ?? ''}
+						<button
+							class="term-chip"
+							class:active={filters.terms.includes(t.term)}
+							onclick={() => toggleTerm(t.term)}
+							title={t.label}
+						>
+							<span class="tc-num">WP {t.term}</span>
+							{#if years}<span class="tc-years">{years}</span>{/if}
+						</button>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Count mode -->
 			<div class="controls-row">
-				<!-- Date range -->
-				<div class="ctrl-group">
-					<span class="ctrl-lbl">{i18n.t('period')}</span>
-					<div class="range">
-						<select bind:value={yFrom}>
-							{#each years.filter((y) => y <= yTo) as y (y)}<option value={y}>{y}</option>{/each}
-						</select>
-						<span class="dash">–</span>
-						<select bind:value={yTo}>
-							{#each years.filter((y) => y >= yFrom) as y (y)}<option value={y}>{y}</option>{/each}
-						</select>
-					</div>
-				</div>
-
-				<div class="ctrl-divider"></div>
-
-				<!-- Granularity -->
-				<div class="ctrl-group">
-					<span class="ctrl-lbl">{i18n.t('granularity')}</span>
-					<div class="seg">
-						<button class:on={filters.granularity === 'Monthly'} onclick={() => (filters.granularity = 'Monthly')}>
-							{i18n.t('monthly')}
-						</button>
-						<button class:on={filters.granularity === 'Quarterly'} onclick={() => (filters.granularity = 'Quarterly')}>
-							{i18n.t('quarterly')}
-						</button>
-					</div>
-				</div>
-
-				<div class="ctrl-divider"></div>
-
-				<!-- Count mode -->
 				<div class="ctrl-group">
 					<span class="ctrl-lbl">{i18n.t('count_by')}</span>
 					<div class="seg">
@@ -332,40 +322,6 @@
 						<button class:on={filters.count_mode === 'occurrences'} onclick={() => (filters.count_mode = 'occurrences')}>
 							{i18n.t('occurrences')}
 						</button>
-					</div>
-				</div>
-
-				<!-- Politician picker — pushed to the right -->
-				<div class="pol-picker">
-					<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true" class="pol-icon">
-						<circle cx="6.5" cy="4" r="2.3" stroke="currentColor" stroke-width="1.4"/>
-						<path d="M1.5 11.5c0-2.761 2.239-5 5-5s5 2.239 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-					</svg>
-					<div class="pol-input-wrap">
-						<input
-							class="pol-input"
-							value={polQuery}
-							oninput={(e) => onPolInput(e.currentTarget.value)}
-							onfocus={() => (polOpen = true)}
-							onblur={() => setTimeout(() => (polOpen = false), 150)}
-							placeholder={i18n.t('any_politician')}
-							autocomplete="off"
-						/>
-						{#if polId != null}
-							<button class="pol-clr" onclick={clearPol} aria-label="clear">✕</button>
-						{/if}
-						{#if polOpen && polResults.length}
-							<ul class="pol-dropdown">
-								{#each polResults as p (p.id)}
-									<li>
-										<button onmousedown={() => pickPol(p)}>
-											<span class="pol-dot" style:background={partyColor(p.party)}></span>
-											{p.name}<span class="pol-party"> · {p.party}</span>
-										</button>
-									</li>
-								{/each}
-							</ul>
-						{/if}
 					</div>
 				</div>
 			</div>
@@ -442,6 +398,39 @@
 										<div>
 											<h3>{i18n.t('timeline_over_time')}</h3>
 											<p class="p-hint">{i18n.t('drilldown_hint')}</p>
+										</div>
+										<!-- Politician filter: scopes timeline + speech list only -->
+										<div class="pol-picker" class:has-value={polId != null}>
+											<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true" class="pol-icon">
+												<circle cx="6.5" cy="4" r="2.3" stroke="currentColor" stroke-width="1.4"/>
+												<path d="M1.5 11.5c0-2.761 2.239-5 5-5s5 2.239 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+											</svg>
+											<div class="pol-input-wrap">
+												<input
+													class="pol-input"
+													value={polQuery}
+													oninput={(e) => onPolInput(e.currentTarget.value)}
+													onfocus={() => (polOpen = true)}
+													onblur={() => setTimeout(() => (polOpen = false), 150)}
+													placeholder={i18n.t('any_politician')}
+													autocomplete="off"
+												/>
+												{#if polId != null}
+													<button class="pol-clr" onclick={clearPol} aria-label="clear">✕</button>
+												{/if}
+												{#if polOpen && polResults.length}
+													<ul class="pol-dropdown">
+														{#each polResults as p (p.id)}
+															<li>
+																<button onmousedown={() => pickPol(p)}>
+																	<span class="pol-dot" style:background={partyColor(p.party)}></span>
+																	{p.name}<span class="pol-party"> · {p.party}</span>
+																</button>
+															</li>
+														{/each}
+													</ul>
+												{/if}
+											</div>
 										</div>
 									</header>
 									{#if timeline.length}
@@ -558,13 +547,14 @@
 
 	/* ── Filter bar ────────────────────────────────────────────────────── */
 	.filter-bar {
-		padding: 1.1rem 1.3rem;
+		padding: 1.4rem 1.5rem 1.1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.7rem;
+		gap: 0.85rem;
 	}
 
-	.search-row {
+	/* Search hero — large, prominent, full-width */
+	.search-hero {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
@@ -573,22 +563,22 @@
 		flex: 1;
 		display: flex;
 		align-items: center;
-		gap: 0.6rem;
+		gap: 0.7rem;
 		background: var(--surface-2);
 		border: 1px solid var(--line-2);
 		border-radius: var(--radius-sm);
-		padding: 0.55rem 0.85rem;
+		padding: 0.75rem 1.1rem;
 		transition: border-color 0.2s, box-shadow 0.2s;
 	}
 	.search-input-wrap:focus-within {
 		border-color: var(--accent);
-		box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 	}
 	.search-icon { color: var(--ink-3); flex-shrink: 0; }
 	.search-input {
 		flex: 1;
 		font: inherit;
-		font-size: 1.05rem;
+		font-size: 1.2rem;
 		font-weight: 500;
 		background: none;
 		border: none;
@@ -621,7 +611,7 @@
 		background: none;
 		border: 1px solid var(--line-2);
 		border-radius: 999px;
-		padding: 0.4rem 0.9rem;
+		padding: 0.45rem 0.95rem;
 		cursor: pointer;
 		white-space: nowrap;
 		transition: color 0.2s, border-color 0.2s;
@@ -645,9 +635,73 @@
 		transition: color 0.15s, border-color 0.15s, background 0.15s;
 	}
 	.suggestion:hover { color: var(--accent); border-color: var(--accent); }
-	.suggestion.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+	.suggestion.active {
+		color: var(--accent);
+		border-color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 10%, transparent);
+	}
 
-	/* Controls row */
+	/* ── Wahlperioden chips ─────────────────────────────────────────────── */
+	.term-row {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		padding-top: 0.1rem;
+		border-top: 1px solid var(--line);
+	}
+	.term-row-lbl {
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		white-space: nowrap;
+		flex-shrink: 0;
+		padding-top: 0.65rem;
+	}
+	.term-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		padding-top: 0.55rem;
+	}
+	.term-chip {
+		font: inherit;
+		font-size: 0.75rem;
+		font-weight: 500;
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.3em;
+		padding: 0.22rem 0.65rem;
+		border-radius: 999px;
+		border: 1px solid var(--line-2);
+		background: none;
+		color: var(--ink-3);
+		cursor: pointer;
+		transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
+		white-space: nowrap;
+	}
+	.term-chip:hover:not(.active) {
+		color: var(--ink-2);
+		border-color: var(--line-3);
+		background: var(--surface-2);
+	}
+	.term-chip.active {
+		color: var(--accent);
+		border-color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 12%, transparent);
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+	}
+	.all-chip { font-style: italic; }
+	.tc-num { font-weight: 600; }
+	.tc-years {
+		font-size: 0.67rem;
+		opacity: 0.6;
+		font-weight: 400;
+	}
+
+	/* Controls row — count mode only */
 	.controls-row {
 		display: flex;
 		align-items: center;
@@ -667,28 +721,6 @@
 		color: var(--ink-3);
 		white-space: nowrap;
 	}
-	.ctrl-divider {
-		width: 1px;
-		height: 1.4rem;
-		background: var(--line-2);
-		flex-shrink: 0;
-	}
-	.range {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-	}
-	.range select {
-		font: inherit;
-		font-size: 0.84rem;
-		padding: 0.3rem 0.5rem;
-		border: 1px solid var(--line-2);
-		border-radius: 6px;
-		background: var(--surface-2);
-		color: var(--ink);
-		cursor: pointer;
-	}
-	.dash { color: var(--ink-3); }
 	.seg {
 		display: flex;
 		gap: 0;
@@ -711,7 +743,7 @@
 	.seg button.on { background: var(--accent); color: #fff; }
 	.seg button:hover:not(.on) { color: var(--ink); background: var(--surface-3); }
 
-	/* Politician picker */
+	/* Politician picker — lives in the timeline panel header */
 	.pol-picker {
 		display: flex;
 		align-items: center;
@@ -720,12 +752,14 @@
 		border: 1px solid var(--line-2);
 		border-radius: 999px;
 		padding: 4px 4px 4px 10px;
-		margin-left: auto;
+		flex-shrink: 0;
+		transition: border-color 0.2s;
 	}
 	.pol-picker:focus-within {
 		border-color: var(--accent);
 		box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
 	}
+	.pol-picker.has-value { border-color: var(--accent); }
 	.pol-icon { color: var(--ink-3); flex-shrink: 0; }
 	.pol-input-wrap { position: relative; flex: 1; min-width: 120px; max-width: 200px; }
 	.pol-input {
@@ -748,7 +782,7 @@
 	.pol-clr:hover { color: var(--ink); }
 	.pol-dropdown {
 		position: absolute; z-index: 10;
-		top: calc(100% + 6px); left: -44px;
+		top: calc(100% + 6px); right: 0;
 		width: 260px; list-style: none; margin: 0; padding: 0.3rem;
 		background: var(--card); border: 1px solid var(--line-2);
 		border-radius: var(--radius-sm); box-shadow: var(--shadow);
@@ -920,12 +954,13 @@
 		.metrics { grid-template-columns: repeat(2, 1fr); }
 		.grid-2 { grid-template-columns: 1fr; }
 		.party-body { grid-template-columns: 1fr; }
-		.ctrl-divider { display: none; }
-		.pol-picker { margin-left: 0; width: 100%; max-width: none; }
+		.p-head { flex-direction: column; }
+		.pol-picker { width: 100%; max-width: none; }
 		.pol-input-wrap { max-width: none; }
 	}
 	@media (max-width: 520px) {
 		.metrics { grid-template-columns: 1fr; }
 		.controls-row { gap: 0.6rem; }
+		.term-row { gap: 0.5rem; }
 	}
 </style>
