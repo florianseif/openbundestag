@@ -606,9 +606,13 @@ def query_interruption_matrix(
 
     Returns: caller_party, target_speaker_party, n
     """
+    # Exclude unattributable parties — these otherwise surface as a bogus "?"
+    # row/column in the heatmap.
     conditions = [
         "caller_party IS NOT NULL",
         "target_speaker_party IS NOT NULL",
+        "caller_party NOT IN ('', 'Unknown')",
+        "target_speaker_party NOT IN ('', 'Unknown')",
         "type = ?",
     ]
     params: list = [type_filter]

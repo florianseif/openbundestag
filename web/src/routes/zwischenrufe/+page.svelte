@@ -9,7 +9,6 @@
 	import ZwischenrufFeed from '$lib/components/ZwischenrufFeed.svelte';
 	import type {
 		ZwischenrufMeta,
-		ZwischenrufTimelinePoint,
 		ZwischenrufCallerCount,
 		ZwischenrufPartyCount,
 		ZwischenrufMatrixRow,
@@ -18,7 +17,6 @@
 
 	// ── state ─────────────────────────────────────────────────────────────────
 	let meta = $state<ZwischenrufMeta | null>(null);
-	let timeline = $state<ZwischenrufTimelinePoint[]>([]);
 	let topCallers = $state<ZwischenrufCallerCount[]>([]);
 	let byParty = $state<ZwischenrufPartyCount[]>([]);
 	let matrix = $state<ZwischenrufMatrixRow[]>([]);
@@ -28,26 +26,6 @@
 	let typeFilter = $state<ZwischenrufType | ''>('Zwischenruf');
 	let termFilter = $state<number | undefined>(undefined);
 	let activeView = $state<'matrix' | 'parties' | 'callers' | 'feed'>('matrix');
-	let showHistorical = $state(false);
-
-	const TYPES: Array<{ value: ZwischenrufType | ''; labelKey: string }> = [
-		{ value: '', labelKey: 'zw_type_zwischenruf' },
-		{ value: 'Zwischenruf', labelKey: 'zw_type_zwischenruf' },
-		{ value: 'Beifall', labelKey: 'zw_type_beifall' },
-		{ value: 'Heiterkeit', labelKey: 'zw_type_heiterkeit' },
-		{ value: 'Widerspruch', labelKey: 'zw_type_widerspruch' },
-		{ value: 'Zuruf', labelKey: 'zw_type_zuruf' }
-	];
-
-	const TYPE_COLOR: Record<string, string> = {
-		Zwischenruf: 'var(--accent)',
-		Beifall: 'var(--gold)',
-		Heiterkeit: '#6be4a0',
-		Lachen: '#6be4a0',
-		Widerspruch: 'var(--spark)',
-		Zuruf: 'var(--accent-2)',
-		Zustimmung: '#7de0ff'
-	};
 
 	// ── boot ──────────────────────────────────────────────────────────────────
 	async function boot() {
@@ -71,13 +49,11 @@
 	async function reload() {
 		const tf = typeFilter || 'Zwischenruf';
 		const term = termFilter;
-		const [tl, tc, bp, mx] = await Promise.allSettled([
-			api.zwischenrufe.timeline(undefined, undefined, term),
+		const [tc, bp, mx] = await Promise.allSettled([
 			api.zwischenrufe.topCallers(tf, term, undefined, 20),
 			api.zwischenrufe.byParty(tf, term),
 			api.zwischenrufe.matrix(tf, term)
 		]);
-		if (tl.status === 'fulfilled') timeline = tl.value;
 		if (tc.status === 'fulfilled') topCallers = tc.value;
 		if (bp.status === 'fulfilled') byParty = bp.value;
 		if (mx.status === 'fulfilled') matrix = mx.value;
@@ -96,47 +72,16 @@
 	});
 
 	// ── derived ───────────────────────────────────────────────────────────────
-	// Timeline: aggregate by year across all types for the sparklines,
-	// and split by type for the stacked view
-	const timelineByType = $derived(() => {
-		const out = new Map<string, Map<string, number>>();
-		for (const pt of timeline) {
-			if (!out.has(pt.type)) out.set(pt.type, new Map());
-			out.get(pt.type)!.set(pt.year, (out.get(pt.type)!.get(pt.year) ?? 0) + pt.n);
-		}
-		return out;
-	});
+	// Unattributable parties surface as "?" in the matrix; drop them everywhere.
+	const isRealParty = (p: string | null | undefined): p is string =>
+		!!p && p !== 'Unknown';
 
-	const years = $derived([...new Set(timeline.map((p) => p.year))].sort());
+	const visibleTopCallers = $derived(topCallers);
 
-	const timelineTypes = $derived(
-		[...new Set(timeline.map((p) => p.type))].sort(
-			(a, b) =>
-				(timelineByType().get(b)?.values().reduce((s, v) => s + v, 0) ?? 0) -
-				(timelineByType().get(a)?.values().reduce((s, v) => s + v, 0) ?? 0)
-		)
-	);
-
-	const historicalSet = $derived(new Set(meta?.historical_parties ?? []));
-
-	const visibleTopCallers = $derived(
-		showHistorical
-			? topCallers
-			: topCallers.filter((c) => !historicalSet.has(c.caller_party))
-	);
-
-	const visibleByParty = $derived(
-		showHistorical
-			? byParty
-			: byParty.filter((p) => !historicalSet.has(p.caller_party))
-	);
+	const visibleByParty = $derived(byParty);
 
 	const visibleMatrix = $derived(
-		showHistorical
-			? matrix
-			: matrix.filter(
-					(r) => !historicalSet.has(r.caller_party) && !historicalSet.has(r.target_speaker_party)
-			  )
+		matrix.filter((r) => isRealParty(r.caller_party) && isRealParty(r.target_speaker_party))
 	);
 
 	const callerBars = $derived(
@@ -171,63 +116,6 @@
 		})()
 	);
 
-	// SVG timeline dimensions
-	const TL_H = 160;
-	const TL_PAD = { t: 12, b: 28, l: 8, r: 8 };
-	let svgW = $state(600);
-
-	function timelineYearX(year: string, w: number): number {
-		if (years.length < 2) return w / 2;
-		const i = years.indexOf(year);
-		const pad = TL_PAD.l + TL_PAD.r;
-		return TL_PAD.l + (i / (years.length - 1)) * (w - pad);
-	}
-
-	function typeTotal(type: string): number {
-		const m = timelineByType().get(type);
-		if (!m) return 0;
-		return [...m.values()].reduce((s, v) => s + v, 0);
-	}
-
-	const maxYearTotal = $derived(
-		Math.max(
-			1,
-			...years.map((y) =>
-				timelineTypes.reduce((s, t) => s + (timelineByType().get(t)?.get(y) ?? 0), 0)
-			)
-		)
-	);
-
-	function stackedPaths(): Array<{ type: string; path: string; color: string }> {
-		if (!years.length || !timelineTypes.length) return [];
-		const innerH = TL_H - TL_PAD.t - TL_PAD.b;
-		const results: Array<{ type: string; path: string; color: string }> = [];
-
-		for (const type of [...timelineTypes].reverse()) {
-			const pts: string[] = [];
-			for (const year of years) {
-				const n = timelineByType().get(type)?.get(year) ?? 0;
-				const x = timelineYearX(year, svgW);
-				const y = TL_PAD.t + innerH * (1 - n / maxYearTotal);
-				pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-			}
-			// Close path along bottom
-			const lastX = timelineYearX(years[years.length - 1], svgW).toFixed(1);
-			const firstX = timelineYearX(years[0], svgW).toFixed(1);
-			const bottom = (TL_PAD.t + innerH).toFixed(1);
-			const d = `M ${pts.join(' L ')} L ${lastX},${bottom} L ${firstX},${bottom} Z`;
-			results.push({ type, path: d, color: TYPE_COLOR[type] ?? 'var(--accent)' });
-		}
-		return results;
-	}
-
-	function yearLabels(): Array<{ x: number; label: string }> {
-		if (!years.length) return [];
-		const step = years.length > 20 ? Math.ceil(years.length / 10) : 1;
-		return years
-			.filter((_, i) => i % step === 0)
-			.map((y) => ({ x: timelineYearX(y, svgW), label: y.slice(0, 4) }));
-	}
 </script>
 
 <svelte:head>
@@ -328,62 +216,7 @@
 					{/each}
 				</select>
 			</label>
-			<label class="filter-group filter-toggle">
-				<input type="checkbox" bind:checked={showHistorical} />
-				<span class="filter-label">{i18n.t('incl_historical')}</span>
-			</label>
 		</div>
-
-		<!-- ── Timeline SVG ───────────────────────────────────────────────── -->
-		<section class="panel glass">
-			<header class="p-head">
-				<h3>{i18n.t('zw_timeline_title')}</h3>
-				<div class="legend">
-					{#each timelineTypes as type}
-						<span class="legend-item">
-							<span class="legend-dot" style:background={TYPE_COLOR[type] ?? 'var(--accent)'}></span>
-							{type}
-							<span class="legend-n">{formatNumber(typeTotal(type), i18n.lang)}</span>
-						</span>
-					{/each}
-				</div>
-			</header>
-
-			{#if years.length}
-				<div
-					class="svg-wrap"
-					bind:clientWidth={svgW}
-				>
-					<svg
-						width="100%"
-						height={TL_H}
-						viewBox="0 0 {svgW} {TL_H}"
-						preserveAspectRatio="none"
-						aria-label="Zeitverlauf Zwischenrufe"
-					>
-						<!-- Stacked area paths -->
-						{#each stackedPaths() as { type, path, color }}
-							<path d={path} fill={color} fill-opacity="0.25" stroke={color} stroke-width="1.5" stroke-opacity="0.8">
-								<title>{type}</title>
-							</path>
-						{/each}
-						<!-- Year axis labels -->
-						{#each yearLabels() as { x, label }}
-							<text
-								x={x}
-								y={TL_H - 6}
-								text-anchor="middle"
-								font-size="9"
-								fill="var(--ink-3)"
-								font-family="var(--display)"
-							>{label}</text>
-						{/each}
-					</svg>
-				</div>
-			{:else}
-				<p class="empty">—</p>
-			{/if}
-		</section>
 
 		<!-- ── Adventure tabs ────────────────────────────────────────────── -->
 		<div class="adventure-tabs" role="tablist">
@@ -677,34 +510,6 @@
 		transition: border-color 0.2s;
 	}
 	.sel:focus { border-color: var(--accent); }
-	.filter-toggle { cursor: pointer; gap: 0.45rem; }
-	.filter-toggle input[type='checkbox'] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
-
-	/* ── Timeline ── */
-	.svg-wrap { width: 100%; }
-
-	.legend {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.8rem;
-		align-items: center;
-	}
-	.legend-item {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		font-size: 0.75rem;
-		color: var(--ink-2);
-	}
-	.legend-dot {
-		width: 8px; height: 8px;
-		border-radius: 50%;
-		flex: none;
-	}
-	.legend-n {
-		color: var(--ink-3);
-		font-size: 0.68rem;
-	}
 
 	/* ── Adventure tabs ── */
 	.adventure-tabs {

@@ -30,7 +30,6 @@ export const STRINGS: Dict = {
 	filters: { de: 'Filter', en: 'Filters' },
 	parties: { de: 'Parteien', en: 'Parties' },
 	all_parties: { de: 'Alle Parteien', en: 'All parties' },
-	incl_historical: { de: 'Historische Parteien', en: 'Historical parties' },
 	terms: { de: 'Wahlperioden', en: 'Electoral terms' },
 	all_terms: { de: 'Alle', en: 'All' },
 	politician: { de: 'Rednerin / Redner', en: 'Speaker' },
@@ -127,7 +126,6 @@ export const STRINGS: Dict = {
 		en: 'Rows = calling party · Columns = interrupted party'
 	},
 	zw_top_title: { de: 'Top Zwischenrufer/innen', en: 'Top hecklers' },
-	zw_timeline_title: { de: 'Reaktionen über die Zeit', en: 'Reactions over time' },
 	zw_feed_title: { de: 'Einzelne Zwischenrufe', en: 'Individual interjections' },
 	zw_search_ph: { de: 'Zwischenrufe durchsuchen…', en: 'Search interjections…' },
 	zw_filter_type: { de: 'Typ', en: 'Type' },
