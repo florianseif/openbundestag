@@ -314,7 +314,7 @@ uv run hf upload MissionJupiter/openbundestag-db openbundestag-data.db openbunde
 
 ## Contributing
 
-Issues and pull requests welcome. See [ROADMAP.md](ROADMAP.md) for planned work.
+Issues and pull requests welcome.
 
 ---
 

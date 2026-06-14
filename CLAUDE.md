@@ -70,5 +70,4 @@ Deploys to Hugging Face Spaces via `.github/workflows/deploy.yml` (triggers on a
 
 ## Notes
 
-- `ROADMAP.md` tracks planned/in-progress work and completed phases — check it before starting deployment/perf work.
 - `requirements.txt` and `pyproject.toml` are intentionally separate: `pyproject.toml`/`uv.lock` is the local dev environment; `requirements.txt` is the slim runtime set for the HF Space.
