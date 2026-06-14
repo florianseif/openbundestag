@@ -1,7 +1,6 @@
 <script lang="ts">
-	import type { Filters, Meta, Politician } from '$lib/types';
+	import type { Filters, Meta } from '$lib/types';
 	import { i18n } from '$lib/i18n.svelte';
-	import { api } from '$lib/api';
 	import { partyColor, partyFullName } from '$lib/format';
 
 	let { filters = $bindable(), meta }: { filters: Filters; meta: Meta } = $props();
@@ -29,34 +28,6 @@
 		filters.parties = filters.parties.includes(p)
 			? filters.parties.filter((x) => x !== p)
 			: [...filters.parties, p];
-	}
-
-	// --- politician typeahead -------------------------------------------------
-	let polQuery = $state('');
-	let polResults = $state<Politician[]>([]);
-	let polName = $state('');
-	let polOpen = $state(false);
-	let timer: ReturnType<typeof setTimeout>;
-
-	function onPolInput(v: string) {
-		polQuery = v;
-		polOpen = true;
-		clearTimeout(timer);
-		timer = setTimeout(async () => {
-			polResults = v.trim() ? await api.politicians(v.trim(), 8).catch(() => []) : [];
-		}, 200);
-	}
-	function pickPol(p: Politician) {
-		filters.politician_id = p.id;
-		polName = p.name;
-		polQuery = p.name;
-		polOpen = false;
-	}
-	function clearPol() {
-		filters.politician_id = null;
-		polName = '';
-		polQuery = '';
-		polResults = [];
 	}
 </script>
 
@@ -100,35 +71,6 @@
 			{/each}
 		</div>
 		{#if filters.parties.length === 0}<p class="hint">{i18n.t('all_parties')}</p>{/if}
-	</section>
-
-	<section class="pol">
-		<label class="lbl" for="pol">{i18n.t('politician')}</label>
-		<div class="pol-input">
-			<input
-				id="pol"
-				value={polQuery}
-				oninput={(e) => onPolInput(e.currentTarget.value)}
-				onfocus={() => (polOpen = true)}
-				placeholder={i18n.t('any_politician')}
-				autocomplete="off"
-			/>
-			{#if filters.politician_id != null}
-				<button class="clr" onclick={clearPol} aria-label="clear">✕</button>
-			{/if}
-			{#if polOpen && polResults.length}
-				<ul class="dropdown">
-					{#each polResults as p (p.id)}
-						<li>
-							<button onclick={() => pickPol(p)}>
-								<span class="dot" style:background={partyColor(p.party)}></span>
-								{p.name}<span class="muted"> · {p.party}</span>
-							</button>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
 	</section>
 
 	<section>
@@ -204,7 +146,6 @@
 		letter-spacing: 0;
 	}
 	.kw,
-	.pol-input input,
 	.range select {
 		width: 100%;
 		font: inherit;
@@ -275,56 +216,6 @@
 		font-size: 0.76rem;
 		color: var(--ink-3);
 		font-style: italic;
-	}
-	.pol-input {
-		position: relative;
-	}
-	.clr {
-		position: absolute;
-		right: 0.5rem;
-		top: 50%;
-		transform: translateY(-50%);
-		border: none;
-		background: none;
-		cursor: pointer;
-		color: var(--ink-3);
-	}
-	.dropdown {
-		position: absolute;
-		z-index: 5;
-		top: calc(100% + 4px);
-		left: 0;
-		right: 0;
-		list-style: none;
-		margin: 0;
-		padding: 0.3rem;
-		background: var(--card);
-		border: 1px solid var(--line-2);
-		border-radius: var(--radius-sm);
-		box-shadow: var(--shadow);
-		max-height: 240px;
-		overflow-y: auto;
-	}
-	.dropdown button {
-		width: 100%;
-		text-align: left;
-		font: inherit;
-		font-size: 0.85rem;
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-		padding: 0.45rem 0.5rem;
-		border: none;
-		background: none;
-		border-radius: 6px;
-		cursor: pointer;
-		color: var(--ink);
-	}
-	.dropdown button:hover {
-		background: var(--paper-2);
-	}
-	.muted {
-		color: var(--ink-3);
 	}
 	.range {
 		display: flex;
