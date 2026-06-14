@@ -54,6 +54,13 @@ FACTION_NORMALIZE_SQL = """
         WHEN regexp_matches(faction, 'GRÜNEN|GRUENEN|GRÜNEN') THEN 'Bündnis 90/Die Grünen'
         WHEN trim(faction) IN ('CDU/CSU', 'SPD', 'FDP', 'AfD', 'Bündnis 90/Die Grünen', 'Die Linke', 'PDS', 'BSW', 'Fraktionslos')
             THEN trim(faction)
+        -- Bundesrat speakers list their state as faction — treat as Unknown
+        WHEN trim(faction) IN (
+            'Baden-Württemberg', 'Bayern', 'Berlin', 'Brandenburg', 'Bremen',
+            'Hamburg', 'Hessen', 'Mecklenburg-Vorpommern', 'Niedersachsen',
+            'Nordrhein-Westfalen', 'Rheinland-Pfalz', 'Saarland', 'Sachsen',
+            'Sachsen-Anhalt', 'Schleswig-Holstein', 'Thüringen')
+            THEN 'Unknown'
         ELSE COALESCE(
             -- For legacy data with city/district names in faction, try to resolve via politician_id
             (SELECT s2.faction FROM speeches s2
