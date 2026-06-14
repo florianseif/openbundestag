@@ -252,17 +252,30 @@
 		return parts[parts.length - 1];
 	}
 	const termChancellors = $derived.by(() => {
+		// Map each electoral term to the chancellor who governed for MOST of it.
+		// A term's window can span two governments (e.g. WP 20 starts under Merkel
+		// in 2021 but Scholz took office that December and governed the rest), so we
+		// pick the government with the largest temporal overlap — not the one merely
+		// in office on the term's first day.
 		const result: Record<number, { name: string; party: string }> = {};
+		const today = new Date();
 		for (const t of (meta?.terms ?? [])) {
-			const m = t.label.match(/\((\d{4})/);
+			const m = t.label.match(/\((\d{4})\s*[–-]\s*(\d{4})?/);
 			if (!m) continue;
-			const approxStart = new Date(`${m[1]}-10-01`);
-			const gov = governmentsRaw.find((g) => {
-				const gStart = new Date(g.start);
-				const gEnd = g.end ? new Date(g.end) : new Date('2099-01-01');
-				return gStart <= approxStart && gEnd >= approxStart;
-			});
-			if (gov) result[t.term] = { name: gov.chancellor, party: govPartyToDisplay(gov.parties[0]) };
+			const winStart = new Date(`${m[1]}-01-01`).getTime();
+			const winEnd = (m[2] ? new Date(`${m[2]}-12-31`) : today).getTime();
+			let best: (typeof governmentsRaw)[number] | null = null;
+			let bestOverlap = 0;
+			for (const g of governmentsRaw) {
+				const gStart = new Date(g.start).getTime();
+				const gEnd = g.end ? new Date(g.end).getTime() : today.getTime();
+				const overlap = Math.min(gEnd, winEnd) - Math.max(gStart, winStart);
+				if (overlap > bestOverlap) {
+					bestOverlap = overlap;
+					best = g;
+				}
+			}
+			if (best) result[t.term] = { name: best.chancellor, party: govPartyToDisplay(best.parties[0]) };
 		}
 		return result;
 	});
@@ -330,11 +343,13 @@
 						class:active={filters.terms.length === 0}
 						onclick={() => (filters.terms = [])}
 					>
-						<span class="chip-stripe" style="background: var(--grad)"></span>
 						<span class="chip-body">
 							<span class="chip-era">WP</span>
 							<span class="chip-num">Alle</span>
 							<span class="chip-years">1949–heute</span>
+							<span class="chip-chancellor">
+								<span class="chip-dot grad-dot"></span>Gesamt
+							</span>
 						</span>
 					</button>
 					{#each sortedTerms as t (t.term)}
@@ -348,7 +363,6 @@
 							title={t.label + (ch ? ' · ' + ch.name : '')}
 							style="--chip-color: {chipColor}"
 						>
-							<span class="chip-stripe"></span>
 							<span class="chip-body">
 								<span class="chip-era">WP</span>
 								<span class="chip-num">{t.term}</span>
@@ -781,43 +795,36 @@
 		flex: none;
 		display: flex;
 		align-items: stretch;
-		border-radius: 8px;
+		border-radius: 10px;
 		border: 1px solid var(--line-2);
 		background: var(--surface-2);
 		cursor: pointer;
 		overflow: hidden;
 		transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
 		text-align: left;
-		min-width: 72px;
+		min-width: 80px;
 		position: relative;
 	}
 	.term-chip:hover:not(.active) {
-		border-color: var(--line-3);
+		border-color: color-mix(in srgb, var(--chip-color, var(--line-3)) 45%, var(--line-2));
 		background: var(--surface-3, var(--surface-2));
 		transform: translateY(-2px);
 		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 	}
 	.term-chip.active {
-		border-color: var(--accent);
-		background: color-mix(in srgb, var(--accent) 9%, var(--surface-2));
+		border-color: color-mix(in srgb, var(--chip-color, var(--accent)) 60%, transparent);
+		background: color-mix(in srgb, var(--chip-color, var(--accent)) 12%, var(--surface-2));
 		box-shadow:
-			0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
-			0 4px 20px -4px color-mix(in srgb, var(--accent) 30%, transparent);
+			0 0 0 1px color-mix(in srgb, var(--chip-color, var(--accent)) 35%, transparent),
+			0 6px 22px -6px color-mix(in srgb, var(--chip-color, var(--accent)) 45%, transparent);
 	}
-	.chip-stripe {
-		width: 3px;
-		flex-shrink: 0;
-		background: var(--chip-color, var(--line-2));
-		transition: background 0.18s;
-	}
-	.all-chip .chip-stripe {
-		background: var(--grad);
-		width: 3px;
+	.all-chip {
+		--chip-color: var(--accent);
 	}
 	.chip-body {
 		display: flex;
 		flex-direction: column;
-		padding: 0.5rem 0.65rem 0.45rem;
+		padding: 0.5rem 0.7rem 0.5rem;
 		gap: 0;
 		min-width: 0;
 	}
@@ -838,7 +845,7 @@
 		color: var(--ink);
 		transition: color 0.18s;
 	}
-	.term-chip.active .chip-num { color: var(--accent); }
+	.term-chip.active .chip-num { color: var(--chip-color, var(--accent)); }
 	.chip-years {
 		font-size: 0.62rem;
 		color: var(--ink-3);
@@ -849,23 +856,32 @@
 	.chip-chancellor {
 		display: flex;
 		align-items: center;
-		gap: 0.3em;
-		font-size: 0.66rem;
-		color: var(--ink-2);
-		margin-top: 0.3rem;
+		gap: 0.35em;
+		font-size: 0.68rem;
+		font-weight: 600;
+		color: color-mix(in srgb, var(--chip-color, var(--ink-2)) 78%, var(--ink));
+		margin-top: 0.35rem;
 		white-space: nowrap;
-		font-style: italic;
+	}
+	.all-chip .chip-chancellor {
+		color: var(--ink-2);
+		font-weight: 500;
 	}
 	.chip-dot {
-		width: 5px;
-		height: 5px;
+		width: 6px;
+		height: 6px;
 		border-radius: 50%;
 		background: var(--chip-color, var(--line-2));
+		box-shadow: 0 0 6px -1px var(--chip-color, transparent);
 		flex-shrink: 0;
 	}
+	.grad-dot {
+		background: var(--grad);
+		box-shadow: none;
+	}
 	.all-chip .chip-num {
-		font-size: 0.95rem;
-		letter-spacing: 0;
+		font-size: 1.25rem;
+		letter-spacing: -0.02em;
 	}
 
 	/* Controls row — count mode only */
