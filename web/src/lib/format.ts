@@ -51,7 +51,7 @@ function luminance(hex: string): number {
 // vanish. Lift only the darkest colours toward a neutral light so every party
 // stays legible while keeping its identity where one exists.
 function darkSafe(hex: string): string {
-	return luminance(hex) < 0.06 ? '#d8dce6' : hex;
+	return luminance(hex) < 0.06 ? '#7a7e8a' : hex;
 }
 
 /** Animate `0 → target`, calling `onTick` each frame. Returns a cancel fn. */
