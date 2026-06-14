@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
+	import { fade } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
 	import { setPartyMeta } from '$lib/format';
 	import { i18n } from '$lib/i18n.svelte';
@@ -301,7 +302,17 @@ const partyBars = $derived(
 		</div>
 
 		<!-- ── Main content ──────────────────────────────────────────────── -->
-		<div class="content">
+		<div class="content" class:scanning={loading}>
+			{#if loading}
+				<div class="data-scan" aria-hidden="true" transition:fade={{ duration: 200 }}>
+					<div class="scan-beam"></div>
+					<div class="scan-trail"></div>
+					<div class="scan-label">
+						<span class="scan-dot"></span>
+						<span class="scan-text">ANALYSIERE</span>
+					</div>
+				</div>
+			{/if}
 			{#if !filters.word.trim()}
 				<div class="empty-state glass">
 					<svg class="empty-icon" width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden="true">
@@ -733,6 +744,119 @@ const partyBars = $derived(
 		flex-direction: column;
 		gap: 1.4rem;
 		min-width: 0;
+		position: relative;
+	}
+
+	/* dim everything except the scanner overlay when loading */
+	.content.scanning > :not(.data-scan) {
+		opacity: 0.45;
+		filter: blur(0.4px) saturate(0.7);
+		transition: opacity 0.35s ease, filter 0.35s ease;
+	}
+	.content:not(.scanning) > :not(.data-scan) {
+		opacity: 1;
+		filter: none;
+		transition: opacity 0.45s ease, filter 0.45s ease;
+	}
+
+	/* ── Data scan overlay ──────────────────────────────────────────────── */
+	.data-scan {
+		position: absolute;
+		inset: 0;
+		z-index: 20;
+		pointer-events: none;
+		overflow: hidden;
+		border-radius: 14px;
+	}
+
+	/* The main glowing beam */
+	.scan-beam {
+		position: absolute;
+		left: -5%;
+		right: -5%;
+		height: 2px;
+		background: linear-gradient(
+			90deg,
+			transparent 0%,
+			color-mix(in srgb, var(--accent) 30%, transparent) 10%,
+			var(--accent) 35%,
+			#c084fc 55%,
+			var(--spark) 75%,
+			color-mix(in srgb, var(--spark) 30%, transparent) 90%,
+			transparent 100%
+		);
+		box-shadow:
+			0 0 6px 2px color-mix(in srgb, var(--accent) 70%, transparent),
+			0 0 20px 6px color-mix(in srgb, var(--accent) 35%, transparent),
+			0 0 60px 16px color-mix(in srgb, var(--accent) 12%, transparent);
+		animation: beam-sweep 2.2s cubic-bezier(0.4, 0, 0.4, 1) infinite;
+	}
+
+	/* Soft trailing fade below the beam */
+	.scan-trail {
+		position: absolute;
+		left: 0; right: 0;
+		height: 120px;
+		background: linear-gradient(
+			to bottom,
+			color-mix(in srgb, var(--accent) 8%, transparent) 0%,
+			transparent 100%
+		);
+		animation: trail-sweep 2.2s cubic-bezier(0.4, 0, 0.4, 1) infinite;
+	}
+
+	@keyframes beam-sweep {
+		0%   { top: -4px;          opacity: 0; }
+		4%   { opacity: 1; }
+		96%  { opacity: 1; }
+		100% { top: calc(100% + 4px); opacity: 0; }
+	}
+	@keyframes trail-sweep {
+		0%   { top: -124px; opacity: 0; }
+		4%   { opacity: 1; }
+		96%  { opacity: 1; }
+		100% { top: calc(100% + 4px); opacity: 0; }
+	}
+
+	/* Floating label that follows the beam */
+	.scan-label {
+		position: absolute;
+		right: 1.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		background: color-mix(in srgb, var(--bg) 80%, transparent);
+		border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+		border-radius: 999px;
+		padding: 0.25rem 0.75rem 0.25rem 0.55rem;
+		box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 25%, transparent);
+		animation: label-sweep 2.2s cubic-bezier(0.4, 0, 0.4, 1) infinite;
+	}
+	@keyframes label-sweep {
+		0%   { top: -18px; opacity: 0; }
+		4%   { opacity: 1; }
+		96%  { opacity: 1; }
+		100% { top: calc(100% - 8px); opacity: 0; }
+	}
+
+	.scan-dot {
+		width: 6px; height: 6px;
+		border-radius: 50%;
+		background: var(--accent);
+		box-shadow: 0 0 6px var(--accent);
+		animation: dot-blink 0.8s ease-in-out infinite alternate;
+	}
+	@keyframes dot-blink {
+		from { opacity: 1; }
+		to   { opacity: 0.3; }
+	}
+
+	.scan-text {
+		font-size: 0.62rem;
+		font-weight: 700;
+		letter-spacing: 0.14em;
+		color: var(--accent);
+		font-family: var(--display);
 	}
 
 	/* ── Hero ──────────────────────────────────────────────────────────── */
