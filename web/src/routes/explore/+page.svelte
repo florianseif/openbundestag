@@ -5,6 +5,7 @@
 	import { setPartyMeta } from '$lib/format';
 	import { i18n } from '$lib/i18n.svelte';
 	import { formatDate, partyColor } from '$lib/format';
+	import governmentsRaw from '$lib/governments.json';
 	import type {
 		Meta,
 		Filters,
@@ -239,6 +240,32 @@
 	const sortedTerms = $derived(
 		meta ? [...meta.terms].sort((a, b) => b.term - a.term) : []
 	);
+
+	// --- chancellor lookup for term chips -------------------------------------
+	function govPartyToDisplay(code: string): string {
+		if (code === 'CDU' || code === 'CSU') return 'CDU/CSU';
+		if (code === 'Grüne') return 'Bündnis 90/Die Grünen';
+		return code;
+	}
+	function shortChancellor(name: string): string {
+		const parts = name.split(' ');
+		return parts[parts.length - 1];
+	}
+	const termChancellors = $derived.by(() => {
+		const result: Record<number, { name: string; party: string }> = {};
+		for (const t of (meta?.terms ?? [])) {
+			const m = t.label.match(/\((\d{4})/);
+			if (!m) continue;
+			const approxStart = new Date(`${m[1]}-10-01`);
+			const gov = governmentsRaw.find((g) => {
+				const gStart = new Date(g.start);
+				const gEnd = g.end ? new Date(g.end) : new Date('2099-01-01');
+				return gStart <= approxStart && gEnd >= approxStart;
+			});
+			if (gov) result[t.term] = { name: gov.chancellor, party: govPartyToDisplay(gov.parties[0]) };
+		}
+		return result;
+	});
 </script>
 
 <svelte:head><title>{filters.word} · OpenBundestag</title></svelte:head>
@@ -289,23 +316,47 @@
 
 			<!-- Wahlperioden term chips -->
 			<div class="term-row">
-				<span class="term-row-lbl">Wahlperiode</span>
-				<div class="term-chips">
+				<div class="term-row-head">
+					<span class="term-row-lbl">Wahlperiode</span>
+					{#if filters.terms.length > 0}
+						<button class="term-clear" onclick={() => (filters.terms = [])}>Alle anzeigen</button>
+					{/if}
+				</div>
+				<div class="term-scroller">
 					<button
 						class="term-chip all-chip"
 						class:active={filters.terms.length === 0}
 						onclick={() => (filters.terms = [])}
-					>Alle</button>
+					>
+						<span class="chip-stripe" style="background: var(--grad)"></span>
+						<span class="chip-body">
+							<span class="chip-era">WP</span>
+							<span class="chip-num">Alle</span>
+							<span class="chip-years">1949–heute</span>
+						</span>
+					</button>
 					{#each sortedTerms as t (t.term)}
 						{@const years = t.label.match(/\((.+?)\)/)?.[1] ?? ''}
+						{@const ch = termChancellors[t.term]}
+						{@const chipColor = ch ? partyColor(ch.party) : 'var(--line-2)'}
 						<button
 							class="term-chip"
 							class:active={filters.terms.includes(t.term)}
 							onclick={() => toggleTerm(t.term)}
-							title={t.label}
+							title={t.label + (ch ? ' · ' + ch.name : '')}
+							style="--chip-color: {chipColor}"
 						>
-							<span class="tc-num">WP {t.term}</span>
-							{#if years}<span class="tc-years">{years}</span>{/if}
+							<span class="chip-stripe"></span>
+							<span class="chip-body">
+								<span class="chip-era">WP</span>
+								<span class="chip-num">{t.term}</span>
+								<span class="chip-years">{years}</span>
+								{#if ch}
+									<span class="chip-chancellor">
+										<span class="chip-dot"></span>{shortChancellor(ch.name)}
+									</span>
+								{/if}
+							</span>
 						</button>
 					{/each}
 				</div>
@@ -644,11 +695,16 @@
 	/* ── Wahlperioden chips ─────────────────────────────────────────────── */
 	.term-row {
 		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-		padding-top: 0.1rem;
+		flex-direction: column;
+		gap: 0.6rem;
+		padding-top: 0.75rem;
 		border-top: 1px solid var(--line);
+	}
+	.term-row-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
 	}
 	.term-row-lbl {
 		font-size: 0.72rem;
@@ -656,49 +712,120 @@
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--ink-3);
-		white-space: nowrap;
-		flex-shrink: 0;
-		padding-top: 0.65rem;
 	}
-	.term-chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.3rem;
-		padding-top: 0.55rem;
-	}
-	.term-chip {
+	.term-clear {
 		font: inherit;
-		font-size: 0.75rem;
-		font-weight: 500;
-		display: inline-flex;
-		align-items: baseline;
-		gap: 0.3em;
-		padding: 0.22rem 0.65rem;
-		border-radius: 999px;
-		border: 1px solid var(--line-2);
+		font-size: 0.68rem;
+		color: var(--accent);
 		background: none;
-		color: var(--ink-3);
+		border: none;
 		cursor: pointer;
-		transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
-		white-space: nowrap;
+		padding: 0;
+		opacity: 0.8;
+		transition: opacity 0.15s;
+	}
+	.term-clear:hover { opacity: 1; }
+	.term-scroller {
+		display: flex;
+		gap: 0.4rem;
+		overflow-x: auto;
+		padding-bottom: 4px;
+		scrollbar-width: thin;
+		scrollbar-color: var(--line-2) transparent;
+	}
+	.term-scroller::-webkit-scrollbar { height: 3px; }
+	.term-scroller::-webkit-scrollbar-track { background: transparent; }
+	.term-scroller::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 2px; }
+
+	.term-chip {
+		flex: none;
+		display: flex;
+		align-items: stretch;
+		border-radius: 8px;
+		border: 1px solid var(--line-2);
+		background: var(--surface-2);
+		cursor: pointer;
+		overflow: hidden;
+		transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+		text-align: left;
+		min-width: 72px;
+		position: relative;
 	}
 	.term-chip:hover:not(.active) {
-		color: var(--ink-2);
 		border-color: var(--line-3);
-		background: var(--surface-2);
+		background: var(--surface-3, var(--surface-2));
+		transform: translateY(-2px);
+		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 	}
 	.term-chip.active {
-		color: var(--accent);
 		border-color: var(--accent);
-		background: color-mix(in srgb, var(--accent) 12%, transparent);
-		box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+		background: color-mix(in srgb, var(--accent) 9%, var(--surface-2));
+		box-shadow:
+			0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
+			0 4px 20px -4px color-mix(in srgb, var(--accent) 30%, transparent);
 	}
-	.all-chip { font-style: italic; }
-	.tc-num { font-weight: 600; }
-	.tc-years {
-		font-size: 0.67rem;
-		opacity: 0.6;
-		font-weight: 400;
+	.chip-stripe {
+		width: 3px;
+		flex-shrink: 0;
+		background: var(--chip-color, var(--line-2));
+		transition: background 0.18s;
+	}
+	.all-chip .chip-stripe {
+		background: var(--grad);
+		width: 3px;
+	}
+	.chip-body {
+		display: flex;
+		flex-direction: column;
+		padding: 0.5rem 0.65rem 0.45rem;
+		gap: 0;
+		min-width: 0;
+	}
+	.chip-era {
+		font-size: 0.58rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		line-height: 1.2;
+	}
+	.chip-num {
+		font-family: var(--display);
+		font-size: 1.25rem;
+		font-weight: 700;
+		line-height: 1.1;
+		letter-spacing: -0.02em;
+		color: var(--ink);
+		transition: color 0.18s;
+	}
+	.term-chip.active .chip-num { color: var(--accent); }
+	.chip-years {
+		font-size: 0.62rem;
+		color: var(--ink-3);
+		line-height: 1.3;
+		margin-top: 0.1rem;
+		white-space: nowrap;
+	}
+	.chip-chancellor {
+		display: flex;
+		align-items: center;
+		gap: 0.3em;
+		font-size: 0.66rem;
+		color: var(--ink-2);
+		margin-top: 0.3rem;
+		white-space: nowrap;
+		font-style: italic;
+	}
+	.chip-dot {
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--chip-color, var(--line-2));
+		flex-shrink: 0;
+	}
+	.all-chip .chip-num {
+		font-size: 0.95rem;
+		letter-spacing: 0;
 	}
 
 	/* Controls row — count mode only */
