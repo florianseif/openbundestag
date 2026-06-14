@@ -115,6 +115,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.6rem;
+		min-width: 0;
+		width: 100%;
 	}
 	.term-row-head {
 		display: flex;

@@ -456,6 +456,7 @@
 	/* The Wahlperiode chip bar takes its own full-width row below the type select */
 	.filter-terms {
 		flex: 1 1 100%;
+		min-width: 0;
 		padding-top: 0.85rem;
 		border-top: 1px solid var(--line);
 	}
