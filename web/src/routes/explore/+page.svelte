@@ -23,6 +23,7 @@
 	import Donut from '$lib/components/Donut.svelte';
 	import SpeechModal from '$lib/components/SpeechModal.svelte';
 	import SpeechTable from '$lib/components/SpeechTable.svelte';
+	import PageHero from '$lib/components/PageHero.svelte';
 
 	// --- bootstrap state ------------------------------------------------------
 	let meta = $state<Meta | null>(null);
@@ -229,6 +230,17 @@ const partyBars = $derived(
 		meta ? [...meta.terms].sort((a, b) => b.term - a.term) : []
 	);
 
+	// Corpus stat chips shown in the page hero
+	const heroStats = $derived(
+		meta
+			? [
+					{ value: meta.terms.length, label: i18n.t('hero_terms') },
+					{ value: `${meta.min_date.slice(0, 4)}–heute`, label: '' },
+					{ value: meta.parties.length, label: i18n.t('hero_parties') }
+				]
+			: []
+	);
+
 	// --- chancellor lookup for term chips -------------------------------------
 	function govPartyToDisplay(code: string): string {
 		if (code === 'CDU' || code === 'CSU') return 'CDU/CSU';
@@ -269,7 +281,7 @@ const partyBars = $derived(
 	});
 </script>
 
-<svelte:head><title>{filters.word} · OpenBundestag</title></svelte:head>
+<svelte:head><title>{filters.word ? `${filters.word} · ` : ''}{i18n.t('ws_title')} · OpenBundestag</title></svelte:head>
 <svelte:window {onkeydown} />
 
 {#if !meta}
@@ -285,6 +297,8 @@ const partyBars = $derived(
 	</div>
 {:else}
 	<div class="explore wrap">
+
+		<PageHero title={i18n.t('ws_title')} subtitle={i18n.t('ws_subtitle')} stats={heroStats} />
 
 		<!-- ── Filter bar ─────────────────────────────────────────────────── -->
 		<div class="filter-bar glass">

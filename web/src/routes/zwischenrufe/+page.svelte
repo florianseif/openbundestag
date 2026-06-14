@@ -4,7 +4,7 @@
 	import { partyColor, formatNumber } from '$lib/format';
 	import Counter from '$lib/components/Counter.svelte';
 	import HBars from '$lib/components/HBars.svelte';
-	import LangToggle from '$lib/components/LangToggle.svelte';
+	import PageHero from '$lib/components/PageHero.svelte';
 	import InterruptionMatrix from '$lib/components/InterruptionMatrix.svelte';
 	import ZwischenrufFeed from '$lib/components/ZwischenrufFeed.svelte';
 	import type {
@@ -123,14 +123,7 @@
 </svelte:head>
 
 <div class="wrap page">
-	<header class="page-head">
-		<div class="head-text">
-			<p class="eyebrow">OpenBundestag</p>
-			<h1 class="grad-text">{i18n.t('zw_title')}</h1>
-			<p class="subtitle">{i18n.t('zw_subtitle')}</p>
-		</div>
-		<LangToggle />
-	</header>
+	<PageHero title={i18n.t('zw_title')} subtitle={i18n.t('zw_subtitle')} />
 
 	{#if bootError}
 		<div class="alert glass">
@@ -367,29 +360,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.4rem;
-	}
-
-	.page-head {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 1rem;
-		margin-bottom: 0.4rem;
-	}
-	.head-text {
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-	}
-	h1 {
-		font-size: clamp(2.2rem, 5vw, 3.4rem);
-		margin: 0;
-		line-height: 1;
-	}
-	.subtitle {
-		color: var(--ink-2);
-		font-size: 1rem;
-		margin: 0;
 	}
 
 	.boot-state {
