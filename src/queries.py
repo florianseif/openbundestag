@@ -26,6 +26,7 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 FACTION_COL = "faction_normalized"   # resolved party per speech
 SEARCH_COL = "search_text"           # lower(speech_content), pre-lowered for LIKE
+GUEST_COL = "is_guest"               # true for non-MdB speakers (Bundesrat etc.)
 
 # Keyword length cap (mirrors the Streamlit text_input max_chars).
 KEYWORD_MAX_LEN = 80
@@ -138,7 +139,7 @@ def open_connection(
     """
     con = duckdb.connect(resolve_db_path(db_path), read_only=read_only)
     cols = _columns(con)
-    missing = {FACTION_COL, SEARCH_COL} - cols
+    missing = {FACTION_COL, SEARCH_COL, GUEST_COL} - cols
     if missing:
         raise RuntimeError(
             f"Database is missing derived column(s) {sorted(missing)}. "
@@ -238,7 +239,8 @@ def date_range(con: duckdb.DuckDBPyConnection) -> tuple | None:
 
 def parties(con: duckdb.DuckDBPyConnection) -> list[str]:
     df = con.execute(
-        f"SELECT DISTINCT {FACTION_COL} AS party FROM speeches ORDER BY 1"
+        f"SELECT DISTINCT {FACTION_COL} AS party FROM speeches "
+        f"WHERE NOT {GUEST_COL} ORDER BY 1"
     ).fetchdf()
     return [p for p in df["party"].tolist() if p and p != "Unknown"]
 
@@ -247,7 +249,7 @@ def politicians(
     con: duckdb.DuckDBPyConnection, q: str = "", limit: int = 50
 ) -> pd.DataFrame:
     """Typeahead over known politicians (for the explorer's MP filter)."""
-    where = "politician_id != -1 AND last_name != ''"
+    where = f"politician_id != -1 AND last_name != '' AND NOT {GUEST_COL}"
     params: list = []
     if q:
         where += " AND lower(first_name || ' ' || last_name) LIKE ?"
@@ -294,7 +296,7 @@ def timeline(
 
     where, where_params = build_conditions(
         word, parties, terms, politician_id, date_from, date_to,
-        extra=[f"{FACTION_COL} != 'Unknown'"],
+        extra=[f"{FACTION_COL} != 'Unknown'", f"NOT {GUEST_COL}"],
     )
     sql = f"""
         SELECT
@@ -321,7 +323,7 @@ def by_party(
 ) -> pd.DataFrame:
     where, params = build_conditions(
         word, parties, terms, politician_id, date_from, date_to,
-        extra=[f"{FACTION_COL} != 'Unknown'"],
+        extra=[f"{FACTION_COL} != 'Unknown'", f"NOT {GUEST_COL}"],
     )
     sql = f"""
         SELECT
@@ -346,7 +348,7 @@ def top_politicians(
 ) -> pd.DataFrame:
     where, params = build_conditions(
         word, parties, terms, None, date_from, date_to,
-        extra=["politician_id != -1", "last_name != ''", f"{FACTION_COL} != 'Unknown'"],
+        extra=["politician_id != -1", "last_name != ''", f"{FACTION_COL} != 'Unknown'", f"NOT {GUEST_COL}"],
     )
     params.append(int(top_n))
     sql = f"""
@@ -374,7 +376,7 @@ def by_term(
 ) -> pd.DataFrame:
     where, params = build_conditions(
         word, parties, terms, politician_id, date_from, date_to,
-        extra=[f"{FACTION_COL} != 'Unknown'"],
+        extra=[f"{FACTION_COL} != 'Unknown'", f"NOT {GUEST_COL}"],
     )
     sql = f"""
         SELECT
@@ -399,7 +401,7 @@ def total(
 ) -> dict:
     where, params = build_conditions(
         word, parties, terms, politician_id, date_from, date_to,
-        extra=[f"{FACTION_COL} != 'Unknown'"],
+        extra=[f"{FACTION_COL} != 'Unknown'", f"NOT {GUEST_COL}"],
     )
     row = con.execute(
         f"SELECT COUNT(*), MIN(date), MAX(date) FROM speeches WHERE {where}",
@@ -431,7 +433,7 @@ def speeches(
     """
     where, where_params = build_conditions(
         word, parties, terms, politician_id, date_from, date_to,
-        extra=[f"{FACTION_COL} != 'Unknown'"],
+        extra=[f"{FACTION_COL} != 'Unknown'", f"NOT s.{GUEST_COL}"],
     )
     text_expr, join_clause = _text_source(con)
     # Window of ~320 chars centred on the first (case-insensitive) match.

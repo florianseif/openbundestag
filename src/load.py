@@ -22,6 +22,25 @@ _BUNDESLAENDER: tuple[str, ...] = (
 _BUNDESLAENDER_SQL = ", ".join(f"'{s}'" for s in _BUNDESLAENDER)
 
 # ---------------------------------------------------------------------------
+# Guest detection (single source of truth)
+# ---------------------------------------------------------------------------
+# A speech is flagged as a guest speech when the speaker is NOT a Bundestag
+# member (MdB) in that session.  The clearest signal is a Bundesland name in
+# the faction field — these are Bundesrat representatives or state officials
+# addressing the Bundestag, not elected MPs.
+#
+# Materialised into speeches.is_guest by finalize_db().  All dashboard queries
+# filter WHERE NOT is_guest so guest speeches are excluded from analysis.
+# The faction_normalized column still resolves their party where possible so
+# the data is available for manual review.
+IS_GUEST_SQL = f"""
+    CASE
+        WHEN trim(faction) IN ({_BUNDESLAENDER_SQL}) THEN true
+        ELSE false
+    END
+"""
+
+# ---------------------------------------------------------------------------
 # Canonical faction normalisation (single source of truth)
 # ---------------------------------------------------------------------------
 # Resolves the party/faction for every speech.  For speeches that carry no
@@ -244,7 +263,11 @@ def finalize_db(
         conn.execute(f"UPDATE speeches s SET faction_normalized = ({FACTION_NORMALIZE_SQL})")
         print("[finalize] faction_normalized materialised", flush=True)
 
-        _log_unknown_speakers(conn, db_path)
+        conn.execute("ALTER TABLE speeches ADD COLUMN IF NOT EXISTS is_guest BOOLEAN")
+        conn.execute(f"UPDATE speeches SET is_guest = ({IS_GUEST_SQL})")
+        print("[finalize] is_guest materialised", flush=True)
+
+        _log_finalize_summary(conn, db_path)
 
         conn.execute("ALTER TABLE speeches ADD COLUMN IF NOT EXISTS search_text VARCHAR")
         conn.execute("UPDATE speeches SET search_text = lower(speech_content)")
@@ -263,16 +286,45 @@ def finalize_db(
     print(f"[finalize] Done → {db_path}", flush=True)
 
 
-def _log_unknown_speakers(
+def _log_finalize_summary(
     conn: duckdb.DuckDBPyConnection,
     db_path: str | Path,
 ) -> None:
-    """Log speeches that could not be assigned a party to a CSV for review.
+    """Log speakers excluded from the dashboards after finalize for review.
 
-    These speakers are excluded from the dashboards (all queries filter
-    faction_normalized != 'Unknown').  The CSV lets you spot patterns and
-    decide whether a manual fix or a new normalisation rule is needed.
+    Two categories are written to separate CSVs next to the DB file:
+      * <db>.guests.csv — non-MdB speakers (is_guest=true), e.g. Bundesrat
+        representatives.  Excluded by design; faction resolved where possible.
+      * <db>.unknown_speakers.csv — MdBs (is_guest=false) whose party could
+        not be resolved.  These are worth investigating for pipeline fixes.
     """
+    # Guests: speakers flagged as non-MdB
+    guest_df: pd.DataFrame = conn.execute(
+        """
+        SELECT
+            first_name || ' ' || last_name AS speaker,
+            faction                         AS raw_faction,
+            faction_normalized              AS resolved_party,
+            COUNT(*)                        AS speeches
+        FROM speeches
+        WHERE is_guest = true
+        GROUP BY speaker, raw_faction, resolved_party
+        ORDER BY speeches DESC
+        """
+    ).fetchdf()
+
+    guest_total = int(guest_df["speeches"].sum()) if not guest_df.empty else 0
+    print(
+        f"[finalize] Guests (non-MdB): {guest_total:,} speeches, "
+        f"{len(guest_df):,} distinct speakers — excluded from dashboards",
+        flush=True,
+    )
+    if not guest_df.empty:
+        log_path = Path(str(db_path)).with_suffix(".guests.csv")
+        guest_df.to_csv(log_path, index=False)
+        print(f"[finalize] Guest speakers logged → {log_path}", flush=True)
+
+    # Unknowns: MdBs whose party we couldn't resolve
     unknown_df: pd.DataFrame = conn.execute(
         """
         SELECT
@@ -281,18 +333,18 @@ def _log_unknown_speakers(
             COUNT(*)                        AS speeches
         FROM speeches
         WHERE faction_normalized = 'Unknown'
+          AND is_guest = false
         GROUP BY speaker, raw_faction
         ORDER BY speeches DESC
         """
     ).fetchdf()
 
-    total_speeches = int(unknown_df["speeches"].sum()) if not unknown_df.empty else 0
+    unknown_total = int(unknown_df["speeches"].sum()) if not unknown_df.empty else 0
     print(
-        f"[finalize] Unknown faction: {total_speeches:,} speeches, "
+        f"[finalize] Unknown party (MdB): {unknown_total:,} speeches, "
         f"{len(unknown_df):,} distinct speakers",
         flush=True,
     )
-
     if not unknown_df.empty:
         log_path = Path(str(db_path)).with_suffix(".unknown_speakers.csv")
         unknown_df.to_csv(log_path, index=False)
