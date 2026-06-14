@@ -174,11 +174,30 @@
 		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 	}
 	.term-chip.active {
-		border-color: color-mix(in srgb, var(--chip-color, var(--accent)) 60%, transparent);
-		background: color-mix(in srgb, var(--chip-color, var(--accent)) 12%, var(--surface-2));
-		box-shadow:
-			0 0 0 1px color-mix(in srgb, var(--chip-color, var(--accent)) 35%, transparent),
-			0 6px 22px -6px color-mix(in srgb, var(--chip-color, var(--accent)) 45%, transparent);
+		/* Aurora gradient border — same rainbow effect as the search ring */
+		overflow: visible;
+		border-color: transparent;
+		border-width: 2px;
+		background:
+			linear-gradient(var(--surface-2), var(--surface-2)) padding-box,
+			var(--grad) border-box;
+		box-shadow: 0 6px 22px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+	}
+	.term-chip.active::after {
+		content: '';
+		position: absolute;
+		inset: -3px;
+		border-radius: 12px;
+		background: var(--grad);
+		opacity: 0.45;
+		filter: blur(10px);
+		z-index: -1;
+		pointer-events: none;
+		animation: aurora-spin 4s linear infinite;
+	}
+	@keyframes aurora-spin {
+		from { filter: blur(10px) hue-rotate(0deg); }
+		to   { filter: blur(10px) hue-rotate(360deg); }
 	}
 	.chip-body {
 		display: flex;
