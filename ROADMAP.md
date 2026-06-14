@@ -4,7 +4,7 @@ Running notes on work planned but not yet done, so it's easy to pick up later.
 Phases 1 and 2 are largely complete; their leftover manual steps and the
 remaining phases are tracked below.
 
-Last updated: 2026-06-13
+Last updated: 2026-06-14
 
 ---
 
@@ -138,6 +138,32 @@ A **fork** can be split out later: `web/` + `api/` are self-contained at the
 repo root. Use `git subtree split --prefix=web` (or `git filter-repo`) to extract
 with history into a standalone repo; a GitHub fork keeps the upstream link for
 pulling pipeline updates.
+
+---
+
+## 🔜 Phase 6 — Faction switching & speaker identity tracking
+
+Track politicians who switched factions across terms. When a politician moves to a
+different party, treat it as a new political identity by assigning a new
+`speaker_id`. Add metadata columns to track party tenure.
+
+**Schema changes:**
+- Add `first_appearance` (date) and `last_appearance` (date) columns to `speakers`
+  table — the date range of when this speaker-faction combination was active.
+- Modify the `speaker_id` generation in the pipeline to disambiguate by faction
+  window: politicians who appear in the same name + party get one ID; if they
+  switch parties, they get a new ID.
+
+**Implementation:**
+- In `transform.py`: detect faction switches by grouping speeches by
+  (name, faction), sorting by date, and assigning sequential IDs within each
+  faction window.
+- In `load.py`: compute `first_appearance` + `last_appearance` for each
+  speaker-faction combination during materialization.
+- Update `query_*` functions in `src/queries.py` to account for the new IDs (esp.
+  `query_top_politicians` — rank by total speeches across all faction windows).
+- UI: show party tenure in politician profiles (e.g. "SPD (2005–2009), Greens
+  (2009–present)").
 
 ---
 
