@@ -255,9 +255,6 @@
 				<path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
 			</svg>
 			{i18n.t('filters')}
-			{#if filters.parties.length}
-				<span class="filter-badge">{filters.parties.length}</span>
-			{/if}
 		</button>
 
 		<aside class="sidebar glass" class:open={filtersOpen}>

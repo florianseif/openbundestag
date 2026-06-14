@@ -1,15 +1,8 @@
 <script lang="ts">
 	import type { Filters, Meta } from '$lib/types';
 	import { i18n } from '$lib/i18n.svelte';
-	import { partyColor, partyFullName } from '$lib/format';
 
 	let { filters = $bindable(), meta }: { filters: Filters; meta: Meta } = $props();
-
-	let showHistorical = $state(false);
-	const historical = $derived(new Set(meta.historical_parties));
-	const visibleParties = $derived(
-		showHistorical ? meta.parties : meta.parties.filter((p) => !historical.has(p))
-	);
 
 	const fromYear = $derived(+meta.min_date.slice(0, 4));
 	const toYear = $derived(+meta.max_date.slice(0, 4));
@@ -23,12 +16,6 @@
 		filters.date_from = `${yFrom}-01-01`;
 		filters.date_to = `${yTo}-12-31`;
 	});
-
-	function toggleParty(p: string) {
-		filters.parties = filters.parties.includes(p)
-			? filters.parties.filter((x) => x !== p)
-			: [...filters.parties, p];
-	}
 </script>
 
 <div class="panel">
@@ -47,30 +34,6 @@
 				<button class="suggestion" onclick={() => (filters.word = w)}>{w}</button>
 			{/each}
 		</div>
-	</section>
-
-	<section>
-		<div class="lbl-row">
-			<span class="lbl">{i18n.t('parties')}</span>
-			<label class="hist">
-				<input type="checkbox" bind:checked={showHistorical} />
-				{i18n.t('incl_historical')}
-			</label>
-		</div>
-		<div class="chips">
-			{#each visibleParties as p (p)}
-				<button
-					class="chip"
-					class:on={filters.parties.includes(p)}
-					style:--c={partyColor(p)}
-					onclick={() => toggleParty(p)}
-					data-tip={partyFullName(p)}
-				>
-					<span class="dot" style:background={partyColor(p)}></span>{p}
-				</button>
-			{/each}
-		</div>
-		{#if filters.parties.length === 0}<p class="hint">{i18n.t('all_parties')}</p>{/if}
 	</section>
 
 	<section>
@@ -129,22 +92,6 @@
 		color: var(--ink-3);
 		margin-bottom: 0.5rem;
 	}
-	.lbl-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		gap: 0.5rem;
-	}
-	.hist {
-		font-size: 0.74rem;
-		color: var(--ink-3);
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-		cursor: pointer;
-		text-transform: none;
-		letter-spacing: 0;
-	}
 	.kw,
 	.range select {
 		width: 100%;
@@ -179,43 +126,6 @@
 	.suggestion:hover {
 		color: var(--accent);
 		border-color: var(--accent);
-	}
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.35rem;
-	}
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		font: inherit;
-		font-size: 0.78rem;
-		font-weight: 500;
-		padding: 0.3rem 0.65rem;
-		border-radius: 999px;
-		border: 1px solid var(--line-2);
-		background: var(--card);
-		color: var(--ink-2);
-		cursor: pointer;
-		transition: all 0.18s;
-	}
-	.chip.on {
-		border-color: var(--c, var(--accent));
-		background: color-mix(in srgb, var(--c, var(--accent)) 12%, var(--card));
-		color: var(--ink);
-	}
-	.dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex: none;
-	}
-	.hint {
-		margin: 0.45rem 0 0;
-		font-size: 0.76rem;
-		color: var(--ink-3);
-		font-style: italic;
 	}
 	.range {
 		display: flex;
