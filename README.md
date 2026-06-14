@@ -2,375 +2,227 @@
 
 # OpenBundestag — Worte der Macht
 
-Explore **word usage across German Bundestag plenary debates** (1949–present, ~760,000 speeches). A lightweight, standalone data pipeline downloads the official open-data transcripts into a single local [DuckDB](https://duckdb.org/) file — no Docker, no PostgreSQL, no Node.js required — and a [Streamlit](https://streamlit.io/) app lets you search any keyword and see how its usage breaks down over time, by party, and by speaker.
+Explore **word usage across German Bundestag plenary debates** (1949–present, ~760,000 speeches). A lightweight, standalone data pipeline downloads the official open-data transcripts into a single local [DuckDB](https://duckdb.org/) file — no Docker, no PostgreSQL, no Node.js required.
 
-## Project Info
+## Quick links
 
-OpenBundestag aims to make German parliamentary discourse easy to search and analyse. The pipeline produces two flat tables (`speakers`, `speeches`) that are ready for analysis without any infrastructure setup.
-
-It is an independent, derivative reimplementation inspired by the
-[Open Discourse](https://opendiscourse.de/) project, which pioneered open access
-to Bundestag debate data.
-
----
-
-## Requirements
-
-- Python ≥ 3.11
-- [uv](https://docs.astral.sh/uv/) (`pip install uv` or `brew install uv`)
-
----
-
-## The data
-
-### Source
-
-Every plenary session of the German Bundestag is transcribed verbatim and published as a structured XML file on the [Bundestag Open Data portal](https://www.bundestag.de/services/opendata). Each file is one complete session — typically 4–8 hours of parliamentary debate.
-
-**Modern terms (19–21):** individual XML files, one per session, published within days of the sitting.  
-**Legacy terms (1–18):** packaged as ZIP archives, one ZIP per term, containing older XML formats that are text-heavy rather than structured.
-
-This pipeline supports **all 21 Wahlperioden (1949–present)**: terms 19–21 use the modern structured XML format; terms 1–18 are distributed as ZIP archives with a legacy text-based XML format that this pipeline parses via regex-based speaker detection. Total corpus: ~760,000 speeches.
-
----
-
-### What a session file contains
-
-Each XML file (`21083.xml`, `20214.xml`, …) is a `dbtplenarprotokoll` document with four top-level sections:
-
-```
-dbtplenarprotokoll
-├── vorspann          — header: session number, date, location, table of contents
-├── rednerliste       — list of all registered speakers with their Bundestag IDs
-├── sitzungsverlauf   — the actual transcript (what the pipeline extracts)
-│   ├── sitzungsbeginn
-│   └── tagesordnungspunkt (one per agenda item)
-│       └── rede (one per speech)
-│           ├── p klasse="redner"  — speaker header with <redner id="…"> and name/faction
-│           ├── p klasse="J"       — speech paragraph
-│           ├── p klasse="J_1"     — first paragraph of a speech
-│           ├── p klasse="O"       — continuation paragraph
-│           └── kommentar          — interjections, applause, heckling
-└── anlagen           — appendix (written statements, voting lists)
-```
-
-The `<redner id="…">` attribute is the official Bundestag politician ID — a stable numeric identifier that maps to the same person across all terms and sessions.
-
-A single session typically contains **50–150 speeches**. Each speech is one MP's or minister's continuous turn at the podium. Interjections (`<kommentar>`) from other MPs are embedded inline but are not extracted as separate speeches.
-
----
-
-### What gets stored
-
-The pipeline flattens all of that into two DuckDB tables:
-
-**`speakers`** — one row per unique politician seen across all downloaded sessions:
-
-| column | type | description |
-|---|---|---|
-| `id` | INTEGER | Official Bundestag politician ID |
-| `first_name` | VARCHAR | First name |
-| `last_name` | VARCHAR | Last name |
-| `faction` | VARCHAR | Parliamentary group (e.g. `CDU/CSU`, `SPD`, `AfD`) |
-
-**`speeches`** — one row per speech segment:
-
-| column | type | description |
-|---|---|---|
-| `id` | INTEGER | Auto-incremented row ID |
-| `session` | VARCHAR | Session number (e.g. `21083`) |
-| `electoral_term` | INTEGER | Wahlperiode |
-| `date` | DATE | Date of the sitting |
-| `politician_id` | INTEGER | Bundestag ID (`-1` if unresolved) |
-| `first_name` | VARCHAR | Speaker first name |
-| `last_name` | VARCHAR | Speaker last name |
-| `faction` | VARCHAR | Parliamentary group |
-| `position_short` | VARCHAR | Role category (`Member of Parliament`, `Minister`, `Chancellor`, `Presidium of Parliament`, `Guest`) |
-| `position_long` | VARCHAR | Full role title where applicable (e.g. `Bundesminister der Finanzen`) |
-| `speech_content` | TEXT | Full verbatim speech text |
-
----
-
-### Where it is stored
-
-```
-data/
-└── term_21/          ← raw XML files (one per session, ~500 KB each)
-    ├── 21001.xml
-    ├── 21002.xml
-    └── …
-
-openbundestag-data.db     ← DuckDB file, query with any DuckDB client
-```
-
-The `data/` directory is the download cache. Re-running `--phase extract` skips files that already exist. The DuckDB file is a single binary you can copy, share, or open directly in tools like [DBeaver](https://dbeaver.io/) or the [DuckDB CLI](https://duckdb.org/docs/api/cli).
-
-### Pre-built database
-
-A pre-built `openbundestag-data.db` (~2 GB, all terms, finalized) is published on Hugging Face:
-[`MissionJupiter/openbundestag-db`](https://huggingface.co/datasets/MissionJupiter/openbundestag-db)
-
-Download it without running the pipeline:
-
-```sh
-uv sync
-uv run hf download MissionJupiter/openbundestag-db openbundestag-data.db --repo-type dataset --local-dir .
-```
-
-Place the file in the project root, then run the app normally. Skip everything in [Quick start](#quick-start) below.
-
----
-
-## Architecture: The pipeline
-
-Here's how the database is built from raw Bundestag XML:
-
-```mermaid
-graph LR
-    A["🌐 Bundestag Open Data<br/>XML files & ZIPs"] -->|download| B["📥 EXTRACT<br/>src/extract.py<br/>_pw_download.py"]
-    
-    B -->|raw files| C["📂 data/term_XX/"]
-    C -->|parse XML| D["🔄 TRANSFORM<br/>src/transform.py<br/>Modern & Legacy paths"]
-    
-    D -->|speakers DF| E["📝 LOAD<br/>src/load.py"]
-    D -->|speeches DF| E
-    
-    E -->|create schema| F["🗄️ DuckDB<br/>openbundestag-data.db"]
-    
-    G["🌍 Wikipedia<br/>Minister data"] -->|scrape| H["👨‍⚖️ MINISTERS<br/>src/scrape_ministers.py"]
-    H -->|ministers table| F
-    
-    F -->|reads faction column| I["✨ FINALIZE<br/>src/load.py<br/>Materialized columns"]
-    I -->|adds<br/>faction_normalized<br/>search_text| J["✅ READY<br/>speeches + speakers<br/>+ zwischenrufe"]
-    
-    J -->|full-text search| K["📊 App & Website<br/>Streamlit + SvelteKit"]
-    
-    style A fill:#e1f5ff
-    style B fill:#fff3e0
-    style C fill:#f5f5f5
-    style D fill:#fff3e0
-    style E fill:#fff3e0
-    style F fill:#c8e6c9
-    style G fill:#e1f5ff
-    style H fill:#fff3e0
-    style I fill:#fff3e0
-    style J fill:#c8e6c9
-    style K fill:#ffe0b2
-```
-
-### Pipeline phases
-
-| Phase | Module | Input | Output | Notes |
-|---|---|---|---|---|
-| **Extract** | `src/extract.py` | Bundestag open-data URLs | `data/term_XX/*.xml` | Downloads via Playwright (bot protection). Idempotent — skips existing files. |
-| **Transform** | `src/transform.py` | Raw XML files | `speakers_df`, `speeches_df` | Auto-detects modern (terms 19–21) vs legacy (1–18) format. Two parse paths: structured XML vs regex-based. |
-| **Load** | `src/load.py` | DataFrames | DuckDB schema + `speakers`, `speeches` tables | Creates `openbundestag-data.db` if absent, appends data by term. |
-| **Ministers** | `src/scrape_ministers.py` | Wikipedia | `ministers`, `roles` tables | Parallel to load — scrapes German federal minister data (CC BY-SA). Needed for faction fallback in finalize. |
-| **Finalize** | `src/load.py` | `speeches` table + ministers table | `faction_normalized`, `search_text` columns | Materializes two derived columns the app queries at runtime. ~5× faster than computing on-the-fly. Idempotent. |
-| **Zwischenrufe** | `src/zwischenrufe.py` | XML + `speeches` table | `zwischenrufe` table | Extracts parliamentary interjections, applause, heckling. Must run **after finalize**. Idempotent per term. |
-
----
-
-## Frontend
-
-A Streamlit app (`app.py`) lets you explore word usage interactively in the browser — no coding required after setup.
-
-### Launch
-
-```sh
-uv run streamlit run app.py
-```
-
-Opens at `http://localhost:8501` automatically.
-
-### What it does
-
-Type any keyword or phrase into the sidebar search box and the app queries the local DuckDB file in real time. Results appear across three tabs:
-
-**📈 Timeline** — line chart of how often the word appeared per month or quarter, one line per party. Toggle to a stacked area chart. Granularity (monthly / quarterly) and count mode (speeches / raw word occurrences) are configurable in the sidebar.
-
-**🥧 By party** — horizontal bar chart and pie chart showing which parties used the word most, plus a stacked bar chart over time so you can see how the party breakdown shifted.
-
-**🎤 Top politicians** — ranked bar chart of the individual MPs who mentioned the word most, coloured by party.
-
-### Filters (sidebar)
-
-| Filter | Description |
-|---|---|
-| Keyword | Required. Substring match — `Klima` also catches `Klimawandel`, `Klimaschutz`, etc. |
-| Party | Multiselect. Leave empty for all parties. |
-| Electoral term | Filter to any Wahlperiode 1–21, or any combination. |
-| Politician | Dropdown search over all known MPs. |
-
-### Party colours
-
-Parties are rendered in their official colours throughout all charts:
-
-| Party | Colour |
-|---|---|
-| CDU/CSU | Black `#000000` |
-| SPD | Red `#E3000F` |
-| AfD | Blue `#009EE0` |
-| Bündnis 90/Die Grünen | Green `#1AA037` |
-| FDP | Yellow `#FFED00` |
-| Die Linke | Purple `#BE3075` |
-| BSW | Wine red `#9B2335` |
+📖 [Architecture diagram](web/src/routes/architecture) (interactive) · 📊 [Streamlit app](#streamlit-app) · 🌐 [SvelteKit website](#website) · 📋 [Data schema](#database-schema) · 🚀 [Contributing](#contributing)
 
 ---
 
 ## Quick start
 
-```sh
-# Install dependencies
+**Prerequisites:** Python ≥ 3.11 + [uv](https://docs.astral.sh/uv/)
+
+```bash
+# Install
 uv sync
 
-# Run the full pipeline for Wahlperiode 20 (default)
+# Run the full pipeline (Wahlperiode 20, ~30 min)
 uv run run.py --phase all
 
-# Or step by step
-uv run run.py --phase extract --term 20
-uv run run.py --phase transform --term 20
-uv run run.py --phase load --term 20
-uv run run.py --phase finalize          # materialise derived columns the app reads
+# Or build everything across all terms
+for term in {1..21}; do uv run run.py --phase all --term $term; done
+
+# Launch the Streamlit app
+uv run streamlit run app.py  # opens http://localhost:8501
 ```
 
-The database is written to `openbundestag-data.db` in the project root.
+### Skip the pipeline: use the pre-built database
 
-The **finalize** phase (run automatically as part of `--phase all`) precomputes
-two columns the Streamlit app reads on every request:
+A ready-made `openbundestag-data.db` (~2 GB, all 21 terms) is available:
 
-- `faction_normalized` — the resolved party per speech (deterministic), so the
-  app never recomputes the faction fallback at query time;
-- `search_text` — `lower(speech_content)`, so substring search scans a
-  pre-lowered column (~5× faster than calling `lower()` over ~1.8 GB per query).
+```bash
+uv sync
+uv run hf download MissionJupiter/openbundestag-db openbundestag-data.db --repo-type dataset --local-dir .
+uv run streamlit run app.py
+```
 
-Run it after `load` **and** `ministers` (the faction fallback reads the
-ministers table). By default `speech_content` stays inline in `speeches` and
-the reader has full original-cased text. Pass `--text-table` to move it to a
-`speech_texts(id, speech_content)` side table — the leaner `speeches` table
-is faster for analytical aggregations while the reader JOINs on demand.
+---
+
+## What is this?
+
+**The pipeline** (6 phases) converts raw Bundestag XML into a queryable database:
+
+```
+XML/ZIP (Bundestag)
+  ↓ Extract (download with Playwright)
+data/term_XX/ (cache)
+  ↓ Transform (parse modern + legacy formats)
+speakers_df, speeches_df (in-memory)
+  ↓ Load (write to DuckDB)
+openbundestag-data.db (created)
+  ↓ Ministers (scrape Wikipedia)
+  ↓ Finalize (materialize faction_normalized, search_text)
+  ↓ Zwischenrufe (extract interjections)
+Ready database → Streamlit + SvelteKit
+```
+
+**See the [interactive architecture diagram](web/src/routes/architecture) for details on each phase.**
+
+### The output: two tables
+
+**`speakers`** — one row per politician across all terms:
+- `id` (Bundestag ID), `first_name`, `last_name`, `faction`
+
+**`speeches`** — one row per speech segment (~760k rows):
+- `id`, `session`, `electoral_term`, `date`, `politician_id`
+- `first_name`, `last_name`, `faction`, `position_short`, `position_long`
+- `speech_content` (full verbatim text)
+
+---
+
+## Streamlit app
+
+Launch with `uv run streamlit run app.py`.
+
+**Search tabs:**
+- **📈 Timeline** — word frequency over time (monthly/quarterly), one line per party
+- **🥧 By party** — party breakdown and historical trends
+- **🎤 Top speakers** — which politicians mentioned the keyword most
+
+**Filters:** keyword (required), parties, electoral terms, specific politician.
+
+**Party colours** — official Bundestag colours:  
+CDU/CSU (#000000) · SPD (#E3000F) · Grünen (#1AA037) · FDP (#FFED00) · Die Linke (#BE3075) · AfD (#009EE0) · BSW (#9B2335)
+
+---
+
+## Website (SvelteKit + FastAPI)
+
+A bespoke site at `web/` and `api/` with scrollytelling intro, live explorer, and dark "data-noir" design (obsidian canvas, aurora gradient accent, glass panels).
+
+**Run locally** (two processes):
+
+```bash
+# Terminal 1: API (reads openbundestag-data.db)
+uv run uvicorn api.main:app --port 8000
+
+# Terminal 2: Website
+cd web && npm install && npm run dev
+# Opens http://localhost:5173
+```
+
+**Deployed:**
+- Frontend → [Cloudflare Pages](https://openbundestag.florian-seif.de) (free)
+- API → Hugging Face Space (free)
+- Database → Hugging Face Dataset (free)
+
+See [`web/README.md`](web/README.md) and [`api/README.md`](api/README.md) for details.
+
+---
+
+## Pipeline reference
+
+| Phase | Module | Purpose | Input | Output |
+|---|---|---|---|---|
+| **Extract** | `src/extract.py` | Download + cache | Bundestag URLs | `data/term_XX/*.xml` |
+| **Transform** | `src/transform.py` | Parse XML → DataFrames | Raw XML | `speakers_df`, `speeches_df` |
+| **Load** | `src/load.py` | Write to DuckDB | DataFrames | `openbundestag-data.db` |
+| **Ministers** | `src/scrape_ministers.py` | Scrape minister data | Wikipedia | `ministers`, `roles` tables |
+| **Finalize** | `src/load.py` | Materialize columns | `speeches` + ministers | `faction_normalized`, `search_text` |
+| **Zwischenrufe** | `src/zwischenrufe.py` | Extract interjections | XML + DB | `zwischenrufe` table |
+
+**Key dependencies:**
+- Extract → Transform → Load (sequential)
+- Ministers runs in parallel with Load, both must finish before Finalize
+- Finalize must complete before Zwischenrufe
 
 ---
 
 ## CLI reference
 
 ```
-uv run run.py [OPTIONS]
-
-Options:
-  --phase [extract|transform|load|ministers|finalize|all]
-                                         Pipeline phase to execute.  [default: all]
-  --term  INTEGER                        Wahlperiode to process.      [default: 20]
-  --db    TEXT                           DuckDB output file.          [default: openbundestag-data.db]
-  --data-dir TEXT                        Raw XML download directory.  [default: data]
-  --text-table                           In finalize, move original-cased text
-                                         to a speech_texts side table.[default: off]
+uv run run.py --phase [extract|transform|load|ministers|finalize|zwischenrufe|all] \
+              --term TERM \
+              --db DATABASE \
+              --data-dir DIRECTORY \
+              --text-table
 ```
 
-**Supported Wahlperioden:** 1–21 (terms 19–21 use structured XML; terms 1–18 use the legacy ZIP archives).
+**Options:**
+- `--phase` (default: `all`) — which phase(s) to run
+- `--term` (default: `20`) — Wahlperiode to process (1–21)
+- `--db` (default: `openbundestag-data.db`) — output database path
+- `--data-dir` (default: `data`) — raw XML cache directory
+- `--text-table` — move speech_content to a side table (lean `speeches`, full text on demand)
 
----
-
-## Repository structure
-
-```
-openbundestag/
-├── pyproject.toml      # uv project config, dependencies
-├── run.py              # CLI entrypoint
-├── app.py              # Streamlit frontend
-├── src/
-│   ├── extract.py      # Download XML/ZIP from Bundestag open-data endpoints
-│   ├── transform.py    # Parse XML → speakers + speeches DataFrames
-│   ├── load.py         # Write DataFrames into DuckDB + finalize derived columns
-│   └── queries.py      # Shared query layer (used by app.py AND api/)
-├── api/                # FastAPI JSON service (HF Space)
-├── web/                # SvelteKit website (Cloudflare Pages)
-└── openbundestag-data.db   # Generated output (git-ignored)
+**Examples:**
+```bash
+uv run run.py --phase all --term 20          # full pipeline for one term
+uv run run.py --phase extract --term 21      # download only
+uv run run.py --phase finalize               # finalize (runs on existing DB)
 ```
 
 ---
 
-## Website (dedicated public site)
+## Data format
 
-Beyond the Streamlit app there is a bespoke website: a **SvelteKit** frontend
-(`web/`) with a scrollytelling intro and a live explorer, backed by a small
-**FastAPI** service (`api/`) over the same DuckDB query engine (`src/queries.py`).
-It uses a committed dark **"data-noir"** design — an obsidian canvas where the
-official party colours glow, an aurora gradient accent, glass panels, animated
-stat count-ups and chart draw-ins. All free to host:
+<details>
+<summary><strong>What's inside a Bundestag XML file?</strong></summary>
 
-- **Frontend** → Cloudflare Pages (unlimited bandwidth, free custom domain + SSL)
-- **API** → a Hugging Face Space (CPU Basic: 2 vCPU / 16 GB RAM)
-- **Database** → the same public HF Dataset, downloaded by the API at startup
+Each XML file (`21083.xml`, `20214.xml`, …) is a `dbtplenarprotokoll` document:
 
-### Run it locally
-
-The site needs **two processes**: the API (which reads your local
-`openbundestag-data.db`) and the SvelteKit dev server. Run each in its own terminal
-from the repository root.
-
-**Prerequisites:** a built `openbundestag-data.db` (see [Quick start](#quick-start)),
-plus [Node.js](https://nodejs.org/) ≥ 20 and `npm` for the frontend.
-
-**1. Start the API** (reads `openbundestag-data.db`, pre-warms it — takes a few seconds):
-
-```sh
-uv run uvicorn api.main:app --port 8000
+```
+dbtplenarprotokoll
+├── vorspann          — header (session number, date, location, TOC)
+├── rednerliste       — registered speakers + Bundestag IDs
+├── sitzungsverlauf   — the actual transcript
+│   └── tagesordnungspunkt (agenda items)
+│       └── rede (speeches)
+│           ├── p klasse="redner"  — speaker header
+│           ├── p klasse="J|J_1|O" — speech paragraphs
+│           └── kommentar          — interjections (extracted separately)
+└── anlagen           — appendix (written statements, voting)
 ```
 
-Wait for `Application startup complete`, then verify it at
-<http://127.0.0.1:8000/health> → `{"status":"ok",...}`.
+**Modern terms (19–21):** structured XML, one file per session.  
+**Legacy terms (1–18):** text-heavy XML in ZIP archives, parsed via regex-based speaker detection.
 
-**2. Start the website** (new terminal):
+The `<redner id="…">` attribute is the stable Bundestag politician ID (maps to the same person across all terms).
 
-```sh
-cd web
-npm install          # first time only
-npm run dev
-```
-
-Open **<http://localhost:5173>**. The frontend is already pointed at the local
-API via `web/.env` (`PUBLIC_API_BASE=http://127.0.0.1:8000`; copy from
-`web/.env.example` if missing).
-
-Notes:
-- **Order doesn't matter.** If the API isn't up yet, the explorer shows a
-  "waking the database…" state and connects automatically once it is.
-- **Drill-down** is live: click any point on the timeline to open a modal of the
-  matching speeches, expand one to read its full text with the keyword
-  highlighted, and download it as a formatted `.txt` extract. Both the default
-  finalize build (inline `speech_content`) and `--text-table` builds give
-  original-cased full text in the reader.
-- Stop either server with `Ctrl-C`.
-
-See [`web/README.md`](web/README.md) and [`api/README.md`](api/README.md).
+</details>
 
 ---
 
 ## Database schema
 
 ```sql
--- Unique politicians derived from speech metadata
 CREATE TABLE speakers (
-    id           INTEGER PRIMARY KEY,  -- official Bundestag politician ID
+    id           INTEGER PRIMARY KEY,  -- Bundestag politician ID
     first_name   VARCHAR,
     last_name    VARCHAR,
     faction      VARCHAR
 );
 
--- One row per speech segment
 CREATE TABLE speeches (
-    id             INTEGER PRIMARY KEY,
-    session        VARCHAR,
-    electoral_term INTEGER,
-    date           DATE,
-    politician_id  INTEGER,
-    first_name     VARCHAR,
-    last_name      VARCHAR,
-    faction        VARCHAR,
-    position_short VARCHAR,   -- e.g. "Member of Parliament", "Minister"
-    position_long  VARCHAR,   -- full role description
-    speech_content TEXT
+    id              INTEGER PRIMARY KEY,
+    session         VARCHAR,           -- session number (e.g. "21083")
+    electoral_term  INTEGER,           -- Wahlperiode
+    date            DATE,
+    politician_id   INTEGER,           -- Bundestag ID (or -1 if unresolved)
+    first_name      VARCHAR,
+    last_name       VARCHAR,
+    faction         VARCHAR,
+    position_short  VARCHAR,           -- "MP", "Minister", "Chancellor", etc.
+    position_long   VARCHAR,           -- full role (e.g. "Bundesminister der Finanzen")
+    speech_content  TEXT,              -- full verbatim text
+    faction_normalized VARCHAR,        -- derived column (finalize phase)
+    search_text     VARCHAR            -- derived column (finalize phase)
+);
+
+CREATE TABLE zwischenrufe (
+    speech_id           INTEGER,
+    electoral_term      INTEGER,
+    session             VARCHAR,
+    date                DATE,
+    target_speaker_id   INTEGER,
+    target_speaker_party VARCHAR,
+    type                VARCHAR,       -- "Zwischenruf", "Beifall", "Lachen", etc.
+    caller_name         VARCHAR,
+    caller_party        VARCHAR,
+    text                TEXT,
+    raw                 TEXT
 );
 ```
 
@@ -383,110 +235,95 @@ import duckdb
 
 con = duckdb.connect("openbundestag-data.db")
 
-# Top speakers by number of speeches
+# Top 10 speakers
 con.sql("""
-    SELECT first_name, last_name, faction, COUNT(*) AS speeches
+    SELECT first_name, last_name, faction, COUNT(*) as speeches
     FROM speeches
     GROUP BY 1, 2, 3
     ORDER BY speeches DESC
     LIMIT 10
 """).show()
 
-# Full-text search
+# Keyword search (with finalize-phase speedup)
 con.sql("""
     SELECT date, first_name, last_name, speech_content
     FROM speeches
-    WHERE speech_content LIKE '%Klimawandel%'
+    WHERE search_text LIKE '%klimawandel%'
     ORDER BY date DESC
+    LIMIT 20
+""").show()
+
+# Party timeline for a keyword
+con.sql("""
+    SELECT
+        DATE_TRUNC('quarter', date) as quarter,
+        faction_normalized,
+        COUNT(*) as mentions
+    FROM speeches
+    WHERE search_text LIKE '%europe%'
+    GROUP BY 1, 2
+    ORDER BY 1, 2
 """).show()
 ```
 
 ---
 
-## Database distribution
-
-This section documents how the pre-built database is published and how deployed services receive it — useful if you are maintaining the project or setting up a fork.
-
-### Lifecycle
+## Repository structure
 
 ```
-Pipeline (local)  →  HF Dataset repo  →  HF Space / API Space (at startup)
+openbundestag/
+├── pyproject.toml          # uv config + deps
+├── run.py                  # CLI entrypoint
+├── app.py                  # Streamlit frontend
+├── src/
+│   ├── extract.py          # Download XML/ZIP
+│   ├── transform.py        # Parse XML → DataFrames
+│   ├── load.py             # Write to DuckDB + finalize
+│   ├── queries.py          # Shared query layer
+│   ├── scrape_ministers.py # Wikipedia scraper
+│   └── zwischenrufe.py     # Interjection extractor
+├── api/                    # FastAPI service
+├── web/                    # SvelteKit frontend
+├── data/                   # Downloaded XML cache (git-ignored)
+└── openbundestag-data.db   # Output database (git-ignored)
 ```
-
-1. **Build locally** — run the full pipeline to produce `openbundestag-data.db`:
-   ```sh
-   uv run run.py --phase all --term 20   # or loop over all terms
-   uv run run.py --phase ministers
-   uv run run.py --phase finalize
-   ```
-
-2. **Upload to the public dataset** — push the finished file to
-   [`MissionJupiter/openbundestag-db`](https://huggingface.co/datasets/MissionJupiter/openbundestag-db):
-   ```sh
-   uv run hf auth login          # once — stores token in ~/.cache/huggingface
-   uv run hf upload MissionJupiter/openbundestag-db openbundestag-data.db openbundestag-data.db --repo-type dataset
-   ```
-   This is a **manual step** — no CI workflow uploads the DB. The file is ~2 GB
-   and is git-ignored; it never passes through GitHub.
-
-3. **Spaces download it at startup** — both the Streamlit Space and the API Space
-   have `HF_DB_REPO=MissionJupiter/openbundestag-db` set as an environment variable
-   in their Dockerfiles. On first boot (or after an ephemeral disk reset), the app
-   calls `huggingface_hub.hf_hub_download()` to pull the file into the container
-   cache. Subsequent restarts reuse the cached file until the container is recycled.
-
-### CI / what GitHub Actions does and does not do
-
-| Workflow | Trigger | What it ships |
-|---|---|---|
-| `deploy.yml` | push to `main` (app files) | `app.py`, `src/queries.py`, `.streamlit/`, `deploy/hf/` → Streamlit Space |
-| `deploy-api.yml` | push to `main` (api/src files) | `api/`, `src/queries.py`, `Dockerfile` → API Space |
-| `deploy-web.yml` | push to `main` (web files) | `web/` build → Cloudflare Pages |
-
-**None of these workflows touch the dataset repo.** The 2 GB DB is never shipped
-by CI — only the application code is. The dataset upload is always a manual
-`hf upload` step performed after a pipeline rebuild.
 
 ---
 
-## Future ideas
+## Deployment
 
-Potential features for the web explorer, roughly ordered by implementation effort:
+Pre-built database is published to [Hugging Face](https://huggingface.co/datasets/MissionJupiter/openbundestag-db) and auto-downloaded by both Streamlit and API Spaces at startup.
 
-### Keyword comparison overlay
-Let the user enter two keywords and overlay them on the same timeline — classic ngram-viewer style. Reuses the existing `/api/timeline` endpoint; the frontend just fires two requests and renders both series on one chart.
+**To update the published database:**
 
-### Party vocabulary divergence
-Given a keyword, show which parties use it *more* or *less* than their overall speech-share would predict — a divergence bar ("CDU uses this word 2× more than expected"). Computable from `/api/by-party` + `/api/total`.
+```bash
+# Build locally (all terms)
+for term in {1..21}; do uv run run.py --phase all --term $term; done
+uv run run.py --phase ministers
+uv run run.py --phase finalize
+for term in {1..21}; do uv run run.py --phase zwischenrufe --term $term; done
 
-### Collocate / n-gram tab
-A tab on the explorer that shows which words appear most often *near* the search term (within ±N words in the same speech). Surfaces thematic context — e.g. what issues consistently co-occur with "Klimawandel". Requires a new SQL query using string splitting or a pre-built co-occurrence index.
+# Upload to HF (one-time auth)
+uv run hf auth login
+uv run hf upload MissionJupiter/openbundestag-db openbundestag-data.db openbundestag-data.db --repo-type dataset
+```
 
-### "Word first appeared" tracker
-Surface the very first Bundestag mention of a term: date, session, and speaker. Good for landing-page storytelling and already derivable from a single `MIN(date)` query.
-
-### Speaker language fingerprint
-For a selected politician, rank their *distinctive* vocabulary using TF-IDF against the full corpus — what words set them apart from other speakers. Pairs with the existing politician typeahead.
-
-### Session heat map
-Calendar or term-grid heat map showing which sessions had the highest keyword density — useful for spotting event-driven spikes (oil crisis, reunification, pandemic).
+**CI/CD:** GitHub Actions deploys application code (not the 2 GB DB) to Spaces and Cloudflare Pages on pushes to `main`.
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Please open an issue or pull request.
+Issues and pull requests welcome. See [ROADMAP.md](ROADMAP.md) for planned work.
 
 ---
 
 ## Data licence & attribution
 
-The speech transcripts are the official plenary protocols (*Plenarprotokolle*) of the German Bundestag, published on the [Bundestag Open Data portal](https://www.bundestag.de/services/opendata).
+Speech transcripts are official German Bundestag plenary protocols (*Plenarprotokolle*), published under the [Bundestag Open Data portal](https://www.bundestag.de/services/opendata).
 
-As official parliamentary documents they are classified as *amtliche Werke* under **§ 5 Abs. 1 UrhG** (German Copyright Act) and are therefore not subject to copyright protection.
+- **Status:** Public domain under **§ 5 Abs. 1 UrhG** (German Copyright Act — *amtliche Werke*)
+- **Use:** Free for reporting, education, research. No commercial advertising.
+- **Attribution:** © Deutscher Bundestag — [www.bundestag.de/services/opendata](https://www.bundestag.de/services/opendata)
 
-**Required attribution when publishing:** © Deutscher Bundestag — [www.bundestag.de/services/opendata](https://www.bundestag.de/services/opendata)
-
-The data may be used freely for reporting, educational, and research purposes. Commercial advertising use is not permitted under the Bundestag's [terms of use](https://www.bundestag.de/nutzungsbedingungen).
-
-Minister biographical data is sourced from Wikipedia under the [Creative Commons Attribution-ShareAlike 4.0 licence (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/).
+Minister data sourced from Wikipedia under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
