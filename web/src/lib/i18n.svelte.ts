@@ -119,7 +119,7 @@ export const STRINGS: Dict = {
 	zw_total: { de: 'Reaktionen gesamt', en: 'Total reactions' },
 	zw_top_caller: { de: 'Aktivste/r Zwischenrufer/in', en: 'Most active heckler' },
 	zw_most_active_party: { de: 'Lauteste Fraktion', en: 'Loudest faction' },
-	zw_most_interrupted: { de: 'Meist unterbrochen', en: 'Most interrupted' },
+	zw_most_interrupted: { de: 'Wurde meist unterbrochen', en: 'Was most interrupted' },
 	zw_matrix_title: { de: 'Wer ruft wem dazwischen?', en: 'Who heckles whom?' },
 	zw_matrix_hint: {
 		de: 'Zeilen = Rufende Partei · Spalten = Unterbrochene Partei',
