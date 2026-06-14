@@ -13,10 +13,11 @@ uv sync                                  # install deps (uses uv.lock)
 uv run streamlit run app.py              # run the app at http://localhost:8501
 
 # Pipeline (build the DB). Default term is 20.
-uv run run.py --phase all --term 20      # extract → transform → load → ministers → finalize
-uv run run.py --phase extract --term 20  # download raw XML/ZIP only
+uv run run.py --phase all --term 20          # extract → transform → load → ministers → finalize → zwischenrufe
+uv run run.py --phase extract --term 20      # download raw XML/ZIP only
 uv run run.py --phase finalize               # rebuild derived columns (speech_content stays inline)
 uv run run.py --phase finalize --text-table  # move speech_content to speech_texts side table (leaner speeches table, reader still works)
+uv run run.py --phase zwischenrufe --term 20 # (re-)extract interjections for a term (needs finalize first)
 
 uv run flake8 src app.py                 # lint (config in .flake8; E203/W503 ignored)
 ```
@@ -32,8 +33,9 @@ There is no test suite. `playwright` is a dev dependency used by the extract pha
 - **load** (`src/load.py`) — `init_db` creates the schema; `load_data` writes speakers/speeches; `load_ministers` writes minister tables.
 - **ministers** (`src/scrape_ministers.py`) — Scrapes German minister/role data from Wikipedia (CC BY-SA). Needed before finalize because the faction fallback references the ministers table.
 - **finalize** (`src/load.py::finalize_db`) — Materializes two derived columns the app reads on every request: `faction_normalized` (resolved party, via `FACTION_NORMALIZE_SQL`) and `search_text` (`lower(speech_content)`). This is a performance phase — it moves the faction CASE logic and `lower()` out of the per-query read path (~5× faster). Must run **after** both load and ministers.
+- **zwischenrufe** (`src/zwischenrufe.py`) — Extracts parliamentary interjections into a dedicated `zwischenrufe` table. Modern terms (19+): re-reads the XML and pulls `<kommentar>` elements (direct children of `<rede>`), which the main transform discards. Legacy terms (1–18): parses parenthetical remarks from the stored `speech_content`. Each segment is classified as `Zwischenruf` (attributed heckling with text + name + party), `Beifall`, `Heiterkeit`, `Lachen`, `Widerspruch`, `Zuruf`, or `Zustimmung`. Must run **after finalize** (needs `faction_normalized` for `target_speaker_party`). Idempotent per term (deletes then re-inserts). Query functions in `src/queries.py`: `query_zwischenrufe_timeline`, `query_top_zwischenrufer`, `query_zwischenrufe_by_caller_party`, `query_interruption_matrix`, `query_zwischenrufe_samples`.
 
-The two main tables are `speakers` (one row per politician) and `speeches` (one row per speech segment). See README.md for full column-level schema.
+The two main tables are `speakers` (one row per politician) and `speeches` (one row per speech segment). The `zwischenrufe` table has one row per reaction segment with columns: `speech_id`, `electoral_term`, `session`, `date`, `target_speaker_id`, `target_speaker_party`, `type`, `caller_name`, `caller_party`, `text`, `raw`. See README.md for full column-level schema.
 
 ## App architecture (`app.py`)
 
