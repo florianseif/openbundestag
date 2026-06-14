@@ -52,7 +52,25 @@ FACTION_NORMALIZE_SQL = """
             )
         WHEN regexp_matches(faction, 'LINKE|Linke')           THEN 'Die Linke'
         WHEN regexp_matches(faction, 'GRÜNEN|GRUENEN|GRÜNEN') THEN 'Bündnis 90/Die Grünen'
-        ELSE trim(regexp_replace(faction, '\\s+', ' '))
+        WHEN trim(faction) IN ('CDU/CSU', 'SPD', 'FDP', 'AfD', 'Bündnis 90/Die Grünen', 'Die Linke', 'PDS', 'BSW', 'Fraktionslos')
+            THEN trim(faction)
+        ELSE COALESCE(
+            -- For legacy data with city/district names in faction, try to resolve via politician_id
+            (SELECT s2.faction FROM speeches s2
+             WHERE s2.politician_id = s.politician_id
+               AND s2.politician_id != -1
+               AND s2.faction IS NOT NULL AND trim(s2.faction) != ''
+             ORDER BY s2.date, s2.id
+             LIMIT 1),
+            -- Fallback to name-based lookup
+            (SELECT s3.faction FROM speeches s3
+             WHERE LOWER(s3.last_name) = LOWER(s.last_name)
+               AND LOWER(trim(s3.first_name)) LIKE LOWER(split_part(trim(s.first_name), ' ', 1)) || '%'
+               AND s3.faction IS NOT NULL AND trim(s3.faction) != ''
+             ORDER BY s3.date, s3.id
+             LIMIT 1),
+            'Unknown'
+        )
     END
 """
 
