@@ -9,6 +9,18 @@ from src.queries import PARTY_FULL_NAMES
 
 _KNOWN_PARTIES: list[str] = list(PARTY_FULL_NAMES.keys())
 
+# The 16 German Bundesländer as they appear in the XML faction field for
+# Bundesrat speakers (state representatives who address the Bundestag).
+_BUNDESLAENDER: tuple[str, ...] = (
+    "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
+    "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen",
+    "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen",
+    "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
+)
+
+# SQL IN-list literal, e.g.  'Bayern', 'Berlin', ...
+_BUNDESLAENDER_SQL = ", ".join(f"'{s}'" for s in _BUNDESLAENDER)
+
 # ---------------------------------------------------------------------------
 # Canonical faction normalisation (single source of truth)
 # ---------------------------------------------------------------------------
@@ -23,7 +35,7 @@ _KNOWN_PARTIES: list[str] = list(PARTY_FULL_NAMES.keys())
 # This expression is materialised once into speeches.faction_normalized by
 # finalize_db(); the Streamlit app reads that column directly instead of
 # recomputing this on every query.
-FACTION_NORMALIZE_SQL = """
+FACTION_NORMALIZE_SQL = f"""
     CASE
         WHEN faction IS NULL OR trim(faction) = ''
             THEN COALESCE(
@@ -54,13 +66,29 @@ FACTION_NORMALIZE_SQL = """
         WHEN regexp_matches(faction, 'GRÜNEN|GRUENEN|GRÜNEN') THEN 'Bündnis 90/Die Grünen'
         WHEN trim(faction) IN ('CDU/CSU', 'SPD', 'FDP', 'AfD', 'Bündnis 90/Die Grünen', 'Die Linke', 'PDS', 'BSW', 'Fraktionslos')
             THEN trim(faction)
-        -- Bundesrat speakers list their state as faction — treat as Unknown
-        WHEN trim(faction) IN (
-            'Baden-Württemberg', 'Bayern', 'Berlin', 'Brandenburg', 'Bremen',
-            'Hamburg', 'Hessen', 'Mecklenburg-Vorpommern', 'Niedersachsen',
-            'Nordrhein-Westfalen', 'Rheinland-Pfalz', 'Saarland', 'Sachsen',
-            'Sachsen-Anhalt', 'Schleswig-Holstein', 'Thüringen')
-            THEN 'Unknown'
+        -- Bundesrat speakers carry their state as the faction field.  Many are
+        -- party members who also hold a state office — try to resolve their
+        -- actual party before falling back to Unknown.
+        WHEN trim(faction) IN ({_BUNDESLAENDER_SQL})
+            THEN COALESCE(
+                -- 1. ministers table (Minister-Präsidenten are often listed)
+                (SELECT m.party FROM ministers m
+                 WHERE LOWER(m.full_name) = LOWER(trim(s.first_name) || ' ' || s.last_name)
+                    OR (LOWER(m.last_name) = LOWER(s.last_name)
+                        AND LOWER(trim(s.first_name)) LIKE LOWER(m.first_name) || '%')
+                 ORDER BY m.full_name
+                 LIMIT 1),
+                -- 2. name-based cross-reference — find other speeches by the
+                --    same person that carry an actual party (not a state name)
+                (SELECT s3.faction FROM speeches s3
+                 WHERE LOWER(s3.last_name) = LOWER(s.last_name)
+                   AND LOWER(trim(s3.first_name)) LIKE LOWER(split_part(trim(s.first_name), ' ', 1)) || '%'
+                   AND s3.faction IS NOT NULL AND trim(s3.faction) != ''
+                   AND trim(s3.faction) NOT IN ({_BUNDESLAENDER_SQL})
+                 ORDER BY s3.date, s3.id
+                 LIMIT 1),
+                'Unknown'
+            )
         ELSE COALESCE(
             -- For legacy data with city/district names in faction, try to resolve via politician_id
             (SELECT s2.faction FROM speeches s2
@@ -216,6 +244,8 @@ def finalize_db(
         conn.execute(f"UPDATE speeches s SET faction_normalized = ({FACTION_NORMALIZE_SQL})")
         print("[finalize] faction_normalized materialised", flush=True)
 
+        _log_unknown_speakers(conn, db_path)
+
         conn.execute("ALTER TABLE speeches ADD COLUMN IF NOT EXISTS search_text VARCHAR")
         conn.execute("UPDATE speeches SET search_text = lower(speech_content)")
         print("[finalize] search_text materialised", flush=True)
@@ -231,6 +261,42 @@ def finalize_db(
 
         conn.execute("CHECKPOINT")
     print(f"[finalize] Done → {db_path}", flush=True)
+
+
+def _log_unknown_speakers(
+    conn: duckdb.DuckDBPyConnection,
+    db_path: str | Path,
+) -> None:
+    """Log speeches that could not be assigned a party to a CSV for review.
+
+    These speakers are excluded from the dashboards (all queries filter
+    faction_normalized != 'Unknown').  The CSV lets you spot patterns and
+    decide whether a manual fix or a new normalisation rule is needed.
+    """
+    unknown_df: pd.DataFrame = conn.execute(
+        """
+        SELECT
+            first_name || ' ' || last_name AS speaker,
+            faction                         AS raw_faction,
+            COUNT(*)                        AS speeches
+        FROM speeches
+        WHERE faction_normalized = 'Unknown'
+        GROUP BY speaker, raw_faction
+        ORDER BY speeches DESC
+        """
+    ).fetchdf()
+
+    total_speeches = int(unknown_df["speeches"].sum()) if not unknown_df.empty else 0
+    print(
+        f"[finalize] Unknown faction: {total_speeches:,} speeches, "
+        f"{len(unknown_df):,} distinct speakers",
+        flush=True,
+    )
+
+    if not unknown_df.empty:
+        log_path = Path(str(db_path)).with_suffix(".unknown_speakers.csv")
+        unknown_df.to_csv(log_path, index=False)
+        print(f"[finalize] Unknown speakers logged → {log_path}", flush=True)
 
 
 def load_zwischenrufe(
