@@ -60,11 +60,31 @@ _ZURUF_RE       = re.compile(r'^(?:Weitere\s+)?Zurufe?\b', re.IGNORECASE)
 _ZUSTIMMUNG_RE  = re.compile(r'^Zustimmung\b',             re.IGNORECASE)
 
 
+def _normalize_name_for_lookup(name: str) -> str:
+    """Strip title and gender prefixes from a name for speaker lookup matching.
+
+    Converts "Dr. John Doe", "Frau Schroeder", etc. → "Schroeder" for matching.
+    """
+    name = name.strip()
+    # Remove title prefixes (Dr., Prof., etc.)
+    name = re.sub(r'^(?:Dr|Prof)\.(?:\s*h\.?\s*c\.?)?\s+', '', name, flags=re.IGNORECASE)
+    # Remove gender prefixes (Herr, Frau, Herrin, etc.)
+    name = re.sub(r'^(?:Herr|Frau|Herrin)\s+', '', name, flags=re.IGNORECASE)
+    return name.strip()
+
+
 def _normalize_party(raw: str) -> str | None:
-    return _match_faction(raw) or raw or None
+    """Normalize party name from bracketed text.
+
+    For modern terms, this extracts party abbreviations like [SPD], [CDU/CSU].
+    For legacy terms (1-18), the bracketed text is often the politician's
+    electoral district/city (e.g., [Tübingen], [Bremen]), not the party.
+    We only return values that match known factions; otherwise return None.
+    """
+    return _match_faction(raw)
 
 
-def _classify_segment(seg: str) -> dict:
+def _classify_segment(seg: str, speaker_lookup: dict[str, str] | None = None) -> dict:
     base = {
         "type": None, "caller_name": None,
         "caller_party": None, "text": None, "raw": seg,
@@ -72,26 +92,44 @@ def _classify_segment(seg: str) -> dict:
 
     m = _GEGENRUF_RE.match(seg)
     if m:
+        party = _normalize_party(m.group("party").strip())
+        caller_name = m.group("name").strip()
+        # Try speaker lookup if normalized party is None (legacy records have city in brackets)
+        if not party and speaker_lookup:
+            normalized_name = _normalize_name_for_lookup(caller_name)
+            party = speaker_lookup.get(normalized_name)
         return {**base,
                 "type": TYPE_ZWISCHENRUF,
-                "caller_name": m.group("name").strip(),
-                "caller_party": _normalize_party(m.group("party").strip()),
+                "caller_name": caller_name,
+                "caller_party": party,
                 "text": (m.group("text") or "").strip() or None}
 
     m = _INDIVIDUAL_RE.match(seg)
     if m:
+        party = _normalize_party(m.group("party").strip())
+        caller_name = m.group("name").strip().rstrip(", ")
+        # Try speaker lookup if normalized party is None (legacy records have city in brackets)
+        if not party and speaker_lookup:
+            normalized_name = _normalize_name_for_lookup(caller_name)
+            party = speaker_lookup.get(normalized_name)
         return {**base,
                 "type": TYPE_ZWISCHENRUF,
-                "caller_name": m.group("name").strip().rstrip(", "),
-                "caller_party": _normalize_party(m.group("party").strip()),
+                "caller_name": caller_name,
+                "caller_party": party,
                 "text": m.group("text").strip()}
 
     m = _ZURUF_ABG_RE.match(seg)
     if m:
+        party = _normalize_party(m.group("party").strip())
+        caller_name = m.group("name").strip()
+        # Try speaker lookup if normalized party is None (legacy records have city in brackets)
+        if not party and speaker_lookup:
+            normalized_name = _normalize_name_for_lookup(caller_name)
+            party = speaker_lookup.get(normalized_name)
         return {**base,
                 "type": TYPE_ZURUF,
-                "caller_name": m.group("name").strip(),
-                "caller_party": _normalize_party(m.group("party").strip())}
+                "caller_name": caller_name,
+                "caller_party": party}
 
     if _BEIFALL_RE.match(seg):
         return {**base, "type": TYPE_BEIFALL}
@@ -215,10 +253,11 @@ _REACTION_KW = re.compile(
 )
 
 
-def _parse_legacy_paren(inner: str) -> list[dict]:
+def _parse_legacy_paren(inner: str, speaker_lookup: dict[str, str] | None = None) -> list[dict]:
     """Parse the interior of a legacy parenthetical into typed segment dicts.
 
     Returns an empty list if the parenthetical doesn't look like a reaction.
+    speaker_lookup: optional dict mapping caller names to faction_normalized for legacy records.
     """
     inner = inner.strip().replace("\n", " ")
     inner = re.sub(r"\s{2,}", " ", inner)
@@ -231,7 +270,7 @@ def _parse_legacy_paren(inner: str) -> list[dict]:
         seg = seg.strip()
         if not seg:
             continue
-        classified = _classify_segment(seg)
+        classified = _classify_segment(seg, speaker_lookup=speaker_lookup)
         # Drop generic unknown segments that don't contain reaction keywords
         if classified["type"] == TYPE_ZURUF and not classified["caller_name"] and not classified["text"]:
             if not _REACTION_KW.search(seg):
@@ -273,11 +312,31 @@ def extract_legacy_term(db_path: str | Path, electoral_term: int) -> pd.DataFram
             [electoral_term],
         ).fetchall()
 
+        # Build speaker name → faction_normalized lookup for caller resolution
+        # Use speeches table (which has faction_normalized) joined with speakers (which has names)
+        speaker_rows = conn.execute(
+            """
+            SELECT DISTINCT sp.first_name, sp.last_name, s.faction_normalized
+            FROM speeches s
+            JOIN speakers sp ON sp.id = s.politician_id
+            WHERE s.electoral_term = ? AND s.faction_normalized IS NOT NULL
+            """,
+            [electoral_term],
+        ).fetchall()
+        # Build lookup with both full names and last names for flexible matching
+        speaker_lookup = {}
+        for first, last, faction in speaker_rows:
+            if last and faction:
+                speaker_lookup[last.strip()] = faction  # Last name only
+            if first and last and faction:
+                # Also try "First Last" format
+                speaker_lookup[f"{first.strip()} {last.strip()}"] = faction
+
     for speech_id, session, date, target_speaker_id, target_party, content in rows:
         if not content:
             continue
         for m in _LEGACY_PAREN_RE.finditer(content):
-            segs = _parse_legacy_paren(m.group(1))
+            segs = _parse_legacy_paren(m.group(1), speaker_lookup=speaker_lookup)
             for seg in segs:
                 records.append({
                     "speech_id":            speech_id,
