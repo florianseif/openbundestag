@@ -7,21 +7,61 @@
 	let { children } = $props();
 	const onExplore = $derived(page.url.pathname.startsWith('/explore'));
 	const onZwischenrufe = $derived(page.url.pathname.startsWith('/zwischenrufe'));
+	const onAbout = $derived(page.url.pathname.startsWith('/about'));
 </script>
 
 <header class="site">
+	<div class="aurora-line" aria-hidden="true"></div>
 	<div class="wrap bar">
 		<a class="brand" href="/">
-			<span class="mark" aria-hidden="true"></span>
+			<span class="mark" aria-hidden="true">
+				<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+					<rect x="2" y="2" width="7" height="7" rx="2" fill="url(#mg)"/>
+					<rect x="11" y="2" width="7" height="7" rx="2" fill="url(#mg)" opacity="0.7"/>
+					<rect x="2" y="11" width="7" height="7" rx="2" fill="url(#mg)" opacity="0.7"/>
+					<rect x="11" y="11" width="7" height="7" rx="2" fill="url(#mg)" opacity="0.45"/>
+					<defs>
+						<linearGradient id="mg" x1="0" y1="0" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+							<stop stop-color="#6b91ff"/>
+							<stop offset="0.52" stop-color="#a98bff"/>
+							<stop offset="1" stop-color="#ff8ec6"/>
+						</linearGradient>
+					</defs>
+				</svg>
+			</span>
 			<span class="name">OpenBundestag</span>
 			<span class="tag">· {i18n.t('tagline')}</span>
 		</a>
+
 		<nav>
 			{#if !onExplore}
-				<a class="navlink" href="/explore">{i18n.t('cta_explore')} →</a>
+				<a class="nav-cta" href="/explore">
+					{i18n.t('cta_explore')}
+					<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+						<path d="M2.5 10.5l8-8M5 2.5h5.5V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</a>
 			{/if}
-			<a class="navlink" class:active={onZwischenrufe} href="/zwischenrufe">{i18n.t('nav_zwischenrufe')}</a>
-			<a class="navlink" href="/about">{i18n.lang === 'de' ? 'Über' : 'About'}</a>
+
+			<a
+				class="nav-pill"
+				class:active={onZwischenrufe}
+				href="/zwischenrufe"
+				style="--pill-color: var(--spark)"
+			>
+				<span class="pill-dot" aria-hidden="true"></span>
+				{i18n.t('nav_zwischenrufe')}
+			</a>
+
+			<a
+				class="nav-pill"
+				class:active={onAbout}
+				href="/about"
+				style="--pill-color: var(--accent-2)"
+			>
+				{i18n.lang === 'de' ? 'Über' : 'About'}
+			</a>
+
 			<LangToggle />
 		</nav>
 	</div>
@@ -52,71 +92,144 @@
 </footer>
 
 <style>
+	/* ── Header shell ── */
 	header.site {
 		position: sticky;
 		top: 0;
 		z-index: 30;
-		backdrop-filter: saturate(1.4) blur(14px);
-		background: color-mix(in srgb, var(--bg) 72%, transparent);
-		border-bottom: 1px solid var(--line);
+		backdrop-filter: saturate(1.6) blur(18px);
+		background: color-mix(in srgb, var(--bg) 78%, transparent);
+		/* no border-bottom — aurora line replaces it */
+	}
+	.aurora-line {
+		height: 1.5px;
+		background: var(--grad);
+		opacity: 0.55;
 	}
 	.bar {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 66px;
+		height: 68px;
 	}
+
+	/* ── Brand ── */
 	.brand {
 		display: flex;
 		align-items: center;
-		gap: 0.55rem;
+		gap: 0.6rem;
 		color: var(--ink);
 		font-weight: 700;
+		text-decoration: none;
 	}
-	.brand:hover {
-		color: var(--ink);
-	}
+	.brand:hover { color: var(--ink); }
 	.mark {
-		width: 16px;
-		height: 16px;
-		border-radius: 5px;
-		background: var(--grad);
-		box-shadow: var(--glow);
 		flex: none;
-		transition: transform 0.4s var(--spring);
+		transition: transform 0.45s var(--spring), filter 0.3s;
+		filter: drop-shadow(0 0 6px rgba(107, 145, 255, 0.5));
 	}
 	.brand:hover .mark {
-		transform: rotate(45deg) scale(1.1);
+		transform: rotate(90deg) scale(1.08);
+		filter: drop-shadow(0 0 12px rgba(169, 139, 255, 0.7));
 	}
 	.name {
 		font-family: var(--display);
-		font-weight: 600;
-		font-size: 1.15rem;
-		letter-spacing: -0.02em;
+		font-weight: 700;
+		font-size: 1.18rem;
+		letter-spacing: -0.025em;
 	}
 	.tag {
 		color: var(--ink-3);
 		font-weight: 500;
-		font-size: 0.88rem;
+		font-size: 0.86rem;
 	}
+
+	/* ── Nav ── */
 	nav {
 		display: flex;
 		align-items: center;
-		gap: 1.1rem;
+		gap: 0.6rem;
 	}
-	.navlink {
-		font-weight: 600;
-		font-size: 0.92rem;
+
+	/* Primary CTA — gradient-bordered glowing button */
+	.nav-cta {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-family: var(--display);
+		font-size: 0.88rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
 		color: var(--ink);
-		transition: color 0.2s;
+		text-decoration: none;
+		padding: 0.42rem 1rem;
+		border-radius: 999px;
+		/* gradient border via background-clip trick */
+		background:
+			linear-gradient(var(--surface), var(--surface)) padding-box,
+			var(--grad) border-box;
+		border: 1.5px solid transparent;
+		transition: transform 0.22s var(--spring), box-shadow 0.22s, color 0.18s;
 	}
-	.navlink:hover,
-	.navlink.active {
-		color: var(--accent);
+	.nav-cta:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 24px -4px rgba(107, 145, 255, 0.45);
+		color: var(--ink);
 	}
+	.nav-cta svg {
+		transition: transform 0.2s;
+	}
+	.nav-cta:hover svg {
+		transform: translate(2px, -2px);
+	}
+
+	/* Secondary pills — glass with per-link accent */
+	.nav-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.42rem;
+		font-size: 0.88rem;
+		font-weight: 600;
+		color: var(--ink-2);
+		text-decoration: none;
+		padding: 0.4rem 0.95rem;
+		border-radius: 999px;
+		border: 1px solid transparent;
+		transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s var(--spring);
+	}
+	.nav-pill:hover {
+		color: var(--ink);
+		border-color: color-mix(in srgb, var(--pill-color, var(--accent)) 40%, transparent);
+		background: color-mix(in srgb, var(--pill-color, var(--accent)) 8%, transparent);
+		transform: translateY(-1px);
+		box-shadow: 0 4px 16px -4px color-mix(in srgb, var(--pill-color, var(--accent)) 30%, transparent);
+	}
+	.nav-pill.active {
+		color: var(--ink);
+		border-color: color-mix(in srgb, var(--pill-color, var(--accent)) 55%, transparent);
+		background: color-mix(in srgb, var(--pill-color, var(--accent)) 10%, transparent);
+		box-shadow:
+			0 0 0 1px color-mix(in srgb, var(--pill-color, var(--accent)) 25%, transparent),
+			0 4px 20px -4px color-mix(in srgb, var(--pill-color, var(--accent)) 35%, transparent);
+	}
+	.pill-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--pill-color, var(--accent));
+		box-shadow: 0 0 6px 1px var(--pill-color, var(--accent));
+		flex: none;
+		transition: box-shadow 0.2s;
+	}
+	.nav-pill.active .pill-dot {
+		box-shadow: 0 0 10px 2px var(--pill-color, var(--accent));
+	}
+
 	main {
 		min-height: 70vh;
 	}
+
+	/* ── Footer ── */
 	footer.site {
 		border-top: 1px solid var(--line);
 		margin-top: 5rem;
@@ -144,9 +257,14 @@
 	.ft-data a {
 		color: var(--accent);
 	}
-	@media (max-width: 560px) {
-		.tag {
-			display: none;
-		}
+
+	@media (max-width: 640px) {
+		.tag { display: none; }
+		nav { gap: 0.4rem; }
+		.nav-cta { padding: 0.38rem 0.8rem; font-size: 0.82rem; }
+		.nav-pill { padding: 0.38rem 0.75rem; font-size: 0.82rem; }
+	}
+	@media (max-width: 420px) {
+		.name { font-size: 1rem; }
 	}
 </style>
