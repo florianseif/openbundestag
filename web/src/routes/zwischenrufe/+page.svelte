@@ -27,12 +27,8 @@
 
 	let typeFilter = $state<ZwischenrufType | ''>('Zwischenruf');
 	let termFilter = $state<number | undefined>(undefined);
-<<<<<<< HEAD
-	let matrixTab = $state<'matrix' | 'top'>('matrix');
-	let showHistorical = $state(false);
-=======
 	let activeView = $state<'matrix' | 'parties' | 'callers' | 'feed'>('matrix');
->>>>>>> main
+	let showHistorical = $state(false);
 
 	const TYPES: Array<{ value: ZwischenrufType | ''; labelKey: string }> = [
 		{ value: '', labelKey: 'zw_type_zwischenruf' },
@@ -161,8 +157,8 @@
 	);
 
 	// Stat cards derived from data
-	const topCaller = $derived(topCallers[0] ?? null);
-	const topCallerParty = $derived(byParty[0] ?? null);
+	const topCaller = $derived(visibleTopCallers[0] ?? null);
+	const topCallerParty = $derived(visibleByParty[0] ?? null);
 	const topTarget = $derived(
 		(() => {
 			const totals = new Map<string, number>();
@@ -510,9 +506,14 @@
 						<p class="p-hint">{i18n.t('zw_matrix_hint')}</p>
 					</div>
 				</header>
+<<<<<<< HEAD
 				{#if matrix.length}
 					<InterruptionMatrix rows={matrix} />
 >>>>>>> main
+=======
+				{#if visibleMatrix.length}
+					<InterruptionMatrix rows={visibleMatrix} />
+>>>>>>> 37e4d61 (feat: add historical party filter to Zwischenrufe view)
 				{:else}
 					<p class="empty">—</p>
 				{/if}
