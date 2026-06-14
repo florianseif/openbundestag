@@ -27,7 +27,7 @@
 
 	let typeFilter = $state<ZwischenrufType | ''>('Zwischenruf');
 	let termFilter = $state<number | undefined>(undefined);
-	let matrixTab = $state<'matrix' | 'top'>('matrix');
+	let activeView = $state<'matrix' | 'parties' | 'callers' | 'feed'>('matrix');
 
 	const TYPES: Array<{ value: ZwischenrufType | ''; labelKey: string }> = [
 		{ value: '', labelKey: 'zw_type_zwischenruf' },
@@ -358,59 +358,129 @@
 			{/if}
 		</section>
 
-		<!-- ── Matrix + Top Callers ───────────────────────────────────────── -->
-		<div class="two-col">
-			<!-- Matrix panel -->
-			<section class="panel glass matrix-panel">
-				<div class="analysis-tabs">
-					<button
-						class="view-tab"
-						class:active={matrixTab === 'matrix'}
-						onclick={() => (matrixTab = 'matrix')}
-					>
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-							<rect x="1" y="1" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-							<rect x="8" y="1" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-							<rect x="1" y="8" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-							<rect x="8" y="8" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-						</svg>
-						{i18n.t('zw_matrix_title')}
-					</button>
-					<button
-						class="view-tab"
-						class:active={matrixTab === 'top'}
-						onclick={() => (matrixTab = 'top')}
-					>
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-							<path d="M2 10h10M4 7h6M6 4h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-						</svg>
-						{i18n.t('zw_most_active_party')}
-					</button>
+		<!-- ── Adventure tabs ────────────────────────────────────────────── -->
+		<div class="adventure-tabs" role="tablist">
+			<button
+				role="tab"
+				aria-selected={activeView === 'matrix'}
+				class="adv-tab"
+				class:active={activeView === 'matrix'}
+				onclick={() => (activeView = 'matrix')}
+				style="--tab-color: var(--accent-2)"
+			>
+				<div class="adv-icon">
+					<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+						<rect x="2" y="2" width="10" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+						<rect x="16" y="2" width="10" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+						<rect x="2" y="16" width="10" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+						<rect x="16" y="16" width="10" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+						<line x1="14" y1="4" x2="14" y2="24" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2" stroke-opacity="0.5"/>
+						<line x1="4" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2" stroke-opacity="0.5"/>
+					</svg>
 				</div>
+				<div class="adv-body">
+					<span class="adv-title">{i18n.t('zw_matrix_title')}</span>
+					<span class="adv-hint">Wer schießt auf wen? Die Konfrontationskarte</span>
+				</div>
+				<span class="adv-arrow">→</span>
+			</button>
 
-				{#if matrixTab === 'matrix'}
-					<header class="p-head">
-						<div>
-							<h3>{i18n.t('zw_matrix_title')}</h3>
-							<p class="p-hint">{i18n.t('zw_matrix_hint')}</p>
-						</div>
-					</header>
-					{#if matrix.length}
-						<InterruptionMatrix rows={matrix} />
-					{:else}
-						<p class="empty">—</p>
-					{/if}
+			<button
+				role="tab"
+				aria-selected={activeView === 'parties'}
+				class="adv-tab"
+				class:active={activeView === 'parties'}
+				onclick={() => (activeView = 'parties')}
+				style="--tab-color: var(--gold)"
+			>
+				<div class="adv-icon">
+					<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+						<rect x="3" y="16" width="4" height="9" rx="1" fill="currentColor" opacity="0.4"/>
+						<rect x="9" y="11" width="4" height="14" rx="1" fill="currentColor" opacity="0.6"/>
+						<rect x="15" y="6" width="4" height="19" rx="1" fill="currentColor" opacity="0.8"/>
+						<rect x="21" y="3" width="4" height="22" rx="1" fill="currentColor"/>
+						<line x1="2" y1="26" x2="26" y2="26" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					</svg>
+				</div>
+				<div class="adv-body">
+					<span class="adv-title">{i18n.t('zw_most_active_party')}</span>
+					<span class="adv-hint">Welche Partei dröhnt am lautesten?</span>
+				</div>
+				<span class="adv-arrow">→</span>
+			</button>
+
+			<button
+				role="tab"
+				aria-selected={activeView === 'callers'}
+				class="adv-tab"
+				class:active={activeView === 'callers'}
+				onclick={() => (activeView = 'callers')}
+				style="--tab-color: var(--spark)"
+			>
+				<div class="adv-icon">
+					<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+						<circle cx="10" cy="9" r="4.5" stroke="currentColor" stroke-width="1.8"/>
+						<path d="M3 24c0-3.866 3.134-7 7-7s7 3.134 7 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+						<path d="M20 8l6 0M20 12l4 0M20 16l5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+					</svg>
+				</div>
+				<div class="adv-body">
+					<span class="adv-title">{i18n.t('zw_top_title')}</span>
+					<span class="adv-hint">Die 20 unruhigsten Parlamentarier</span>
+				</div>
+				<span class="adv-arrow">→</span>
+			</button>
+
+			<button
+				role="tab"
+				aria-selected={activeView === 'feed'}
+				class="adv-tab"
+				class:active={activeView === 'feed'}
+				onclick={() => (activeView = 'feed')}
+				style="--tab-color: #6be4a0"
+			>
+				<div class="adv-icon">
+					<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+						<rect x="3" y="5" width="22" height="4" rx="2" fill="currentColor" opacity="0.35"/>
+						<rect x="3" y="12" width="16" height="4" rx="2" fill="currentColor" opacity="0.65"/>
+						<rect x="3" y="19" width="19" height="4" rx="2" fill="currentColor" opacity="0.9"/>
+						<circle cx="23" cy="21" r="3.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+						<path d="M22 21l1 1 1.5-1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</div>
+				<div class="adv-body">
+					<span class="adv-title">{i18n.t('zw_feed_title')}</span>
+					<span class="adv-hint">Echte Rufe aus dem Plenum, live</span>
+				</div>
+				<span class="adv-arrow">→</span>
+			</button>
+		</div>
+
+		<!-- ── View panels ────────────────────────────────────────────────── -->
+		{#if activeView === 'matrix'}
+			<section class="panel glass">
+				<header class="p-head">
+					<div>
+						<h3>{i18n.t('zw_matrix_title')}</h3>
+						<p class="p-hint">{i18n.t('zw_matrix_hint')}</p>
+					</div>
+				</header>
+				{#if matrix.length}
+					<InterruptionMatrix rows={matrix} />
 				{:else}
-					<header class="p-head"><h3>{i18n.t('zw_most_active_party')}</h3></header>
-					{#if partyBars.length}
-						<HBars bars={partyBars} valueLabel={i18n.t('zw_calls')} />
-					{:else}
-						<p class="empty">—</p>
-					{/if}
+					<p class="empty">—</p>
 				{/if}
 			</section>
-
-			<!-- Top callers panel -->
+		{:else if activeView === 'parties'}
+			<section class="panel glass">
+				<header class="p-head"><h3>{i18n.t('zw_most_active_party')}</h3></header>
+				{#if partyBars.length}
+					<HBars bars={partyBars} valueLabel={i18n.t('zw_calls')} />
+				{:else}
+					<p class="empty">—</p>
+				{/if}
+			</section>
+		{:else if activeView === 'callers'}
 			<section class="panel glass">
 				<header class="p-head"><h3>{i18n.t('zw_top_title')}</h3></header>
 				{#if callerBars.length}
@@ -419,15 +489,14 @@
 					<p class="empty">—</p>
 				{/if}
 			</section>
-		</div>
-
-		<!-- ── Individual Zwischenrufe feed ──────────────────────────────── -->
-		<section class="panel glass">
-			<header class="p-head">
-				<h3>{i18n.t('zw_feed_title')}</h3>
-			</header>
-			<ZwischenrufFeed termFilter={termFilter} />
-		</section>
+		{:else}
+			<section class="panel glass">
+				<header class="p-head">
+					<h3>{i18n.t('zw_feed_title')}</h3>
+				</header>
+				<ZwischenrufFeed termFilter={termFilter} />
+			</section>
+		{/if}
 	{/if}
 </div>
 
@@ -608,12 +677,98 @@
 		font-size: 0.68rem;
 	}
 
-	/* ── Two-col ── */
-	.two-col {
+	/* ── Adventure tabs ── */
+	.adventure-tabs {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 1.4rem;
-		align-items: start;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0.75rem;
+	}
+	.adv-tab {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.6rem;
+		padding: 1.1rem 1.2rem 1rem;
+		background: var(--surface);
+		border: 1px solid var(--line-2);
+		border-radius: 14px;
+		cursor: pointer;
+		text-align: left;
+		transition: transform 0.22s var(--spring), border-color 0.22s, box-shadow 0.22s, background 0.22s;
+		overflow: hidden;
+	}
+	.adv-tab::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: radial-gradient(ellipse 80% 60% at 50% 120%, color-mix(in srgb, var(--tab-color) 18%, transparent), transparent 70%);
+		opacity: 0;
+		transition: opacity 0.3s;
+	}
+	.adv-tab::after {
+		content: '';
+		position: absolute;
+		inset: 0 0 auto 0;
+		height: 2px;
+		background: var(--tab-color);
+		border-radius: 2px 2px 0 0;
+		opacity: 0;
+		transition: opacity 0.22s;
+	}
+	.adv-tab:hover {
+		border-color: color-mix(in srgb, var(--tab-color) 55%, transparent);
+		transform: translateY(-3px);
+		box-shadow: 0 8px 28px -6px color-mix(in srgb, var(--tab-color) 28%, transparent);
+	}
+	.adv-tab:hover::before { opacity: 1; }
+	.adv-tab:hover::after { opacity: 0.5; }
+	.adv-tab:hover .adv-arrow { opacity: 1; transform: translateX(2px); }
+	.adv-tab.active {
+		border-color: color-mix(in srgb, var(--tab-color) 70%, transparent);
+		background: color-mix(in srgb, var(--tab-color) 6%, var(--surface));
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--tab-color) 30%, transparent),
+		            0 12px 36px -8px color-mix(in srgb, var(--tab-color) 35%, transparent);
+		transform: translateY(-2px);
+	}
+	.adv-tab.active::before { opacity: 1; }
+	.adv-tab.active::after { opacity: 1; }
+	.adv-tab.active .adv-icon { color: var(--tab-color); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--tab-color) 60%, transparent)); }
+	.adv-tab.active .adv-title { color: var(--ink); }
+	.adv-tab.active .adv-arrow { opacity: 1; color: var(--tab-color); transform: translateX(3px); }
+	.adv-icon {
+		color: var(--ink-3);
+		transition: color 0.22s, filter 0.22s;
+		flex: none;
+	}
+	.adv-body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.22rem;
+		flex: 1;
+	}
+	.adv-title {
+		font-family: var(--display);
+		font-size: 0.88rem;
+		font-weight: 700;
+		color: var(--ink-2);
+		line-height: 1.2;
+		transition: color 0.22s;
+	}
+	.adv-hint {
+		font-size: 0.73rem;
+		color: var(--ink-3);
+		line-height: 1.35;
+	}
+	.adv-arrow {
+		position: absolute;
+		bottom: 0.9rem;
+		right: 1rem;
+		font-size: 1rem;
+		color: var(--ink-3);
+		opacity: 0;
+		transition: opacity 0.22s, transform 0.22s, color 0.22s;
 	}
 
 	/* ── Panels ── */
@@ -641,47 +796,6 @@
 		padding: 2rem 0;
 	}
 
-	/* ── Tabs ── */
-	.analysis-tabs {
-		display: inline-flex;
-		align-self: flex-start;
-		background: var(--surface-2);
-		border: 1px solid var(--line-2);
-		border-radius: 999px;
-		padding: 3px;
-		gap: 2px;
-		margin-bottom: 1.2rem;
-	}
-	.view-tab {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.45rem;
-		font: inherit;
-		font-size: 0.82rem;
-		font-weight: 600;
-		padding: 0.45rem 1rem;
-		border: none;
-		border-radius: 999px;
-		background: transparent;
-		color: var(--ink-3);
-		cursor: pointer;
-		transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-		white-space: nowrap;
-	}
-	.view-tab:hover:not(.active) {
-		color: var(--ink-2);
-		background: var(--surface-3);
-	}
-	.view-tab.active {
-		background: var(--surface);
-		color: var(--ink);
-		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-	}
-	.view-tab.active svg {
-		filter: drop-shadow(0 0 4px var(--accent));
-		color: var(--accent);
-	}
-
 	/* ── Btn ── */
 	.btn {
 		font: inherit;
@@ -702,10 +816,11 @@
 
 	@media (max-width: 900px) {
 		.metrics { grid-template-columns: repeat(2, 1fr); }
-		.two-col { grid-template-columns: 1fr; }
+		.adventure-tabs { grid-template-columns: repeat(2, 1fr); }
 	}
 	@media (max-width: 540px) {
 		.metrics { grid-template-columns: 1fr; }
+		.adventure-tabs { grid-template-columns: 1fr; }
 		.filter-bar { flex-direction: column; align-items: flex-start; }
 	}
 </style>
