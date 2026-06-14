@@ -81,7 +81,6 @@
 	let total = $state<Totals | null>(null);
 	let timeline = $state<TimelinePoint[]>([]);
 	let byParty = $state<PartyCount[]>([]);
-	let byTerm = $state<TermCount[]>([]);
 	let top = $state<PoliticianCount[]>([]);
 	let loading = $state(false);
 	let queryError = $state<string | null>(null);
@@ -127,25 +126,23 @@
 
 	async function runQuery(f: Filters, pid: number | null, n: number) {
 		if (!f.word.trim()) {
-			total = null; timeline = []; byParty = []; byTerm = []; top = [];
+			total = null; timeline = []; byParty = []; top = [];
 			return;
 		}
 		loading = true;
 		queryError = null;
 		const pf = { ...f, politician_id: pid };
-		const [tot, tl, bp, bt, tp] = await Promise.allSettled([
+		const [tot, tl, bp, tp] = await Promise.allSettled([
 			api.total(pf),
 			api.timeline(pf),
 			api.byParty(f),
-			api.byTerm(f),
 			api.topPoliticians(f, n)
 		]);
 		if (tot.status === 'fulfilled') total = tot.value;
 		if (tl.status === 'fulfilled') timeline = tl.value;
 		if (bp.status === 'fulfilled') byParty = bp.value;
-		if (bt.status === 'fulfilled') byTerm = bt.value;
 		if (tp.status === 'fulfilled') top = tp.value;
-		const failed = [tot, tl, bp, bt, tp].find((r) => r.status === 'rejected');
+		const failed = [tot, tl, bp, tp].find((r) => r.status === 'rejected');
 		queryError = failed ? (failed.reason as ApiError).message : null;
 		loading = false;
 	}
@@ -223,13 +220,6 @@ const partyBars = $derived(
 			value: d.speeches,
 			color: partyColor(d.party)
 		}))
-	);
-	const termBars = $derived(
-		byTerm.map((tc) => {
-			const label = meta?.terms.find((t) => t.term === tc.term)?.label ?? '';
-			const years2 = label.match(/\((.+?)\)/)?.[1] ?? '';
-			return { label: `WP ${tc.term}`, sub: years2, value: tc.speeches, color: 'var(--accent)' };
-		})
 	);
 
 	const speechFilters = $derived({ ...filters, politician_id: polId });
@@ -509,12 +499,6 @@ const partyBars = $derived(
 									<Donut slices={donutSlices} />
 									<HBars bars={partyBars} valueLabel={i18n.t('speeches')} />
 								</div>
-								{#if termBars.length}
-									<div class="term-section">
-										<span class="term-label">{i18n.t('by_term_title')}</span>
-										<HBars bars={termBars} valueLabel={i18n.t('speeches')} />
-									</div>
-								{/if}
 							{:else}
 								<p class="empty">—</p>
 							{/if}
@@ -1043,16 +1027,6 @@ const partyBars = $derived(
 		grid-template-columns: 200px 1fr;
 		gap: 1.5rem;
 		align-items: center;
-	}
-	.term-section {
-		margin-top: 1.4rem; padding-top: 1.2rem;
-		border-top: 1px solid var(--line);
-	}
-	.term-label {
-		display: block;
-		font-size: 0.78rem; font-weight: 600;
-		letter-spacing: 0.06em; text-transform: uppercase;
-		color: var(--ink-3); margin-bottom: 0.75rem;
 	}
 
 	.empty, .err { color: var(--ink-3); padding: 2rem 0; text-align: center; }
