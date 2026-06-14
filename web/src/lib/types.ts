@@ -99,3 +99,52 @@ export interface Filters {
 	granularity: Granularity;
 	count_mode: CountMode;
 }
+
+// Zwischenrufe (interjections / heckling)
+export interface ZwischenrufMeta {
+	available: boolean;
+	total: number;
+}
+
+export type ZwischenrufType =
+	| 'Zwischenruf'
+	| 'Beifall'
+	| 'Heiterkeit'
+	| 'Lachen'
+	| 'Widerspruch'
+	| 'Zuruf'
+	| 'Zustimmung';
+
+export interface ZwischenrufTimelinePoint {
+	year: string; // ISO date (start of year)
+	type: ZwischenrufType;
+	n: number;
+}
+
+export interface ZwischenrufCallerCount {
+	caller_name: string;
+	caller_party: string;
+	n: number;
+}
+
+export interface ZwischenrufPartyCount {
+	caller_party: string;
+	n: number;
+}
+
+export interface ZwischenrufMatrixRow {
+	caller_party: string;
+	target_speaker_party: string;
+	n: number;
+}
+
+export interface ZwischenrufSample {
+	id: number;
+	date: string;
+	electoral_term: number;
+	caller_name: string | null;
+	caller_party: string | null;
+	target_speaker_party: string | null;
+	text: string | null;
+	raw: string;
+}

@@ -1,0 +1,242 @@
+<script lang="ts">
+	import { partyColor } from '$lib/format';
+	import { formatNumber } from '$lib/format';
+	import type { ZwischenrufMatrixRow } from '$lib/types';
+
+	let { rows }: { rows: ZwischenrufMatrixRow[] } = $props();
+
+	// Derive ordered party lists from data
+	const callers = $derived(
+		[...new Set(rows.map((r) => r.caller_party))].sort(
+			(a, b) => totalByParty(b, 'caller') - totalByParty(a, 'caller')
+		)
+	);
+	const targets = $derived(
+		[...new Set(rows.map((r) => r.target_speaker_party))].sort(
+			(a, b) => totalByParty(b, 'target') - totalByParty(a, 'target')
+		)
+	);
+
+	function totalByParty(party: string, role: 'caller' | 'target'): number {
+		return rows
+			.filter((r) => (role === 'caller' ? r.caller_party : r.target_speaker_party) === party)
+			.reduce((s, r) => s + r.n, 0);
+	}
+
+	// Lookup map for O(1) cell access
+	const lookup = $derived(
+		new Map(rows.map((r) => [`${r.caller_party}→${r.target_speaker_party}`, r.n]))
+	);
+	const maxVal = $derived(Math.max(1, ...rows.map((r) => r.n)));
+
+	function cell(caller: string, target: string): number {
+		return lookup.get(`${caller}→${target}`) ?? 0;
+	}
+
+	// Intensity mapped to alpha: 0 → 0.04, max → 0.88
+	function intensity(n: number): number {
+		return n === 0 ? 0 : 0.08 + (n / maxVal) * 0.8;
+	}
+
+	// Abbreviate long party names for tight cells
+	function abbrev(party: string): string {
+		const MAP: Record<string, string> = {
+			'Bündnis 90/Die Grünen': 'Grüne',
+			'Die Linke': 'Linke',
+			'CDU/CSU': 'CDU/CSU',
+			Fraktionslos: 'fraktlos',
+			Unknown: '?'
+		};
+		return MAP[party] ?? party;
+	}
+
+	let hoveredCell = $state<{ caller: string; target: string; n: number } | null>(null);
+</script>
+
+<div class="matrix-wrap">
+	<div class="grid" style:--cols={targets.length + 1} style:--rows={callers.length + 1}>
+		<!-- Top-left corner -->
+		<div class="corner">
+			<span class="axis-label row-axis">rufend ↓</span>
+			<span class="axis-label col-axis">unterbrochen →</span>
+		</div>
+
+		<!-- Column headers (target parties) -->
+		{#each targets as target}
+			<div class="header col-header" title={target}>
+				<span class="dot" style:background={partyColor(target)}></span>
+				{abbrev(target)}
+			</div>
+		{/each}
+
+		<!-- Rows: one per calling party -->
+		{#each callers as caller}
+			<!-- Row header -->
+			<div class="header row-header" title={caller}>
+				<span class="dot" style:background={partyColor(caller)}></span>
+				{abbrev(caller)}
+			</div>
+
+			<!-- Data cells -->
+			{#each targets as target}
+				{@const n = cell(caller, target)}
+				{@const alpha = intensity(n)}
+				{@const isSelf = caller === target}
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					class="cell"
+					class:self={isSelf}
+					class:active={n > 0}
+					style:--alpha={alpha}
+					style:--cc={partyColor(caller)}
+					onmouseenter={() => (hoveredCell = n > 0 ? { caller, target, n } : null)}
+					onmouseleave={() => (hoveredCell = null)}
+				>
+					{#if n > 0}
+						<span class="n">{formatNumber(n, 'de')}</span>
+					{/if}
+				</div>
+			{/each}
+		{/each}
+	</div>
+
+	<!-- Hover tooltip -->
+	{#if hoveredCell}
+		<div class="tooltip">
+			<span class="tt-from" style:color={partyColor(hoveredCell.caller)}
+				>{hoveredCell.caller}</span
+			>
+			<span class="tt-arrow">→</span>
+			<span class="tt-to" style:color={partyColor(hoveredCell.target)}
+				>{hoveredCell.target}</span
+			>
+			<strong class="tt-n">{formatNumber(hoveredCell.n, 'de')}</strong>
+		</div>
+	{/if}
+</div>
+
+<style>
+	.matrix-wrap {
+		position: relative;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: minmax(72px, auto) repeat(calc(var(--cols) - 1), minmax(52px, 1fr));
+		gap: 3px;
+		min-width: max-content;
+	}
+
+	.corner {
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+		padding: 0 6px 4px 0;
+		gap: 2px;
+	}
+	.axis-label {
+		font-size: 0.62rem;
+		color: var(--ink-3);
+		letter-spacing: 0.04em;
+		white-space: nowrap;
+	}
+
+	.header {
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--ink-2);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.col-header {
+		flex-direction: column;
+		align-items: flex-start;
+		justify-content: flex-end;
+		padding: 0 2px 5px;
+		writing-mode: vertical-lr;
+		transform: rotate(180deg);
+		height: 90px;
+		font-size: 0.68rem;
+	}
+	.col-header .dot {
+		margin: 0;
+	}
+	.row-header {
+		padding: 2px 6px 2px 2px;
+		justify-content: flex-end;
+		text-align: right;
+	}
+
+	.dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		flex: none;
+	}
+
+	.cell {
+		height: 44px;
+		border-radius: 6px;
+		background: rgba(107, 145, 255, calc(var(--alpha) * 0.5));
+		border: 1px solid rgba(255, 255, 255, 0.04);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: default;
+		transition: background 0.15s, border-color 0.15s, transform 0.15s;
+		position: relative;
+	}
+	.cell.active {
+		background: color-mix(in srgb, var(--cc) calc(var(--alpha) * 80%), transparent);
+		border-color: color-mix(in srgb, var(--cc) 30%, transparent);
+		box-shadow: 0 0 0 0 var(--cc);
+	}
+	.cell.active:hover {
+		transform: scale(1.08);
+		border-color: color-mix(in srgb, var(--cc) 60%, transparent);
+		box-shadow: 0 0 16px -4px var(--cc);
+		z-index: 2;
+	}
+	.cell.self {
+		background: rgba(255, 255, 255, 0.03);
+		border-style: dashed;
+		opacity: 0.4;
+	}
+
+	.n {
+		font-size: 0.7rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		color: var(--ink);
+		line-height: 1;
+	}
+
+	.tooltip {
+		position: sticky;
+		bottom: 0;
+		left: 0;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: var(--surface-2);
+		border: 1px solid var(--line-2);
+		border-radius: 999px;
+		font-size: 0.82rem;
+		margin-top: 0.6rem;
+	}
+	.tt-arrow {
+		color: var(--ink-3);
+	}
+	.tt-n {
+		margin-left: 0.3rem;
+		font-variant-numeric: tabular-nums;
+		color: var(--ink);
+	}
+</style>

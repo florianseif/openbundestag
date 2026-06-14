@@ -17,7 +17,10 @@ import click
     "--phase",
     default="all",
     show_default=True,
-    type=click.Choice(["extract", "transform", "load", "ministers", "finalize", "all"], case_sensitive=False),
+    type=click.Choice(
+        ["extract", "transform", "load", "ministers", "finalize", "zwischenrufe", "all"],
+        case_sensitive=False,
+    ),
     help="Pipeline phase to execute.",
 )
 @click.option(
@@ -103,6 +106,23 @@ def main(
         from src.load import finalize_db
 
         finalize_db(db, text_table=text_table)
+
+    # ------------------------------------------------------------------
+    # ZWISCHENRUFE: extract interjections from XML / speech text
+    # (must run after finalize — needs faction_normalized)
+    # ------------------------------------------------------------------
+    if phase in ("zwischenrufe", "all"):
+        from src.zwischenrufe import extract_modern_term, extract_legacy_term
+        from src.load import init_db, load_zwischenrufe
+
+        init_db(db)
+        modern_cutoff = 19
+        if term >= modern_cutoff:
+            zdf = extract_modern_term(db, term_dir, term)
+        else:
+            zdf = extract_legacy_term(db, term)
+
+        load_zwischenrufe(db, zdf, term)
 
     click.echo("Pipeline finished.")
 

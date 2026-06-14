@@ -16,7 +16,13 @@ import type {
 	Politician,
 	SpeechPage,
 	SpeechFull,
-	Filters
+	Filters,
+	ZwischenrufMeta,
+	ZwischenrufTimelinePoint,
+	ZwischenrufCallerCount,
+	ZwischenrufPartyCount,
+	ZwischenrufMatrixRow,
+	ZwischenrufSample
 } from './types';
 
 const BASE = (PUBLIC_API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '');
@@ -102,5 +108,68 @@ export const api = {
 	speeches: (f: Filters, limit = 20, offset = 0, fetcher?: FetchLike) =>
 		get<SpeechPage>(`/api/speeches?${buildQuery(f, { limit, offset })}`, fetcher),
 
-	speech: (id: number, fetcher?: FetchLike) => get<SpeechFull>(`/api/speech/${id}`, fetcher)
+	speech: (id: number, fetcher?: FetchLike) => get<SpeechFull>(`/api/speech/${id}`, fetcher),
+
+	zwischenrufe: {
+		meta: (fetcher?: FetchLike) => get<ZwischenrufMeta>('/api/zwischenrufe/meta', fetcher),
+
+		timeline: (
+			typeFilter?: string,
+			partyFilter?: string,
+			termFilter?: number,
+			fetcher?: FetchLike
+		) => {
+			const p = new URLSearchParams();
+			if (typeFilter) p.set('type_filter', typeFilter);
+			if (partyFilter) p.set('party_filter', partyFilter);
+			if (termFilter) p.set('term_filter', String(termFilter));
+			return get<ZwischenrufTimelinePoint[]>(`/api/zwischenrufe/timeline?${p}`, fetcher);
+		},
+
+		topCallers: (
+			typeFilter = 'Zwischenruf',
+			termFilter?: number,
+			partyFilter?: string,
+			limit = 20,
+			fetcher?: FetchLike
+		) => {
+			const p = new URLSearchParams({ type_filter: typeFilter, limit: String(limit) });
+			if (termFilter) p.set('term_filter', String(termFilter));
+			if (partyFilter) p.set('party_filter', partyFilter);
+			return get<ZwischenrufCallerCount[]>(`/api/zwischenrufe/top-callers?${p}`, fetcher);
+		},
+
+		byParty: (typeFilter = 'Zwischenruf', termFilter?: number, fetcher?: FetchLike) => {
+			const p = new URLSearchParams({ type_filter: typeFilter });
+			if (termFilter) p.set('term_filter', String(termFilter));
+			return get<ZwischenrufPartyCount[]>(`/api/zwischenrufe/by-party?${p}`, fetcher);
+		},
+
+		matrix: (typeFilter = 'Zwischenruf', termFilter?: number, fetcher?: FetchLike) => {
+			const p = new URLSearchParams({ type_filter: typeFilter });
+			if (termFilter) p.set('term_filter', String(termFilter));
+			return get<ZwischenrufMatrixRow[]>(`/api/zwischenrufe/matrix?${p}`, fetcher);
+		},
+
+		samples: (
+			opts: {
+				keyword?: string;
+				callerParty?: string;
+				callerName?: string;
+				targetParty?: string;
+				termFilter?: number;
+				limit?: number;
+			} = {},
+			fetcher?: FetchLike
+		) => {
+			const p = new URLSearchParams();
+			if (opts.keyword) p.set('keyword', opts.keyword);
+			if (opts.callerParty) p.set('caller_party', opts.callerParty);
+			if (opts.callerName) p.set('caller_name', opts.callerName);
+			if (opts.targetParty) p.set('target_party', opts.targetParty);
+			if (opts.termFilter) p.set('term_filter', String(opts.termFilter));
+			if (opts.limit) p.set('limit', String(opts.limit));
+			return get<ZwischenrufSample[]>(`/api/zwischenrufe/samples?${p}`, fetcher);
+		}
+	}
 };

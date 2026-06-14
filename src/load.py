@@ -54,7 +54,7 @@ FACTION_NORMALIZE_SQL = """
 
 DDL = """
 CREATE TABLE IF NOT EXISTS speakers (
-    id           INTEGER PRIMARY KEY,
+    id           BIGINT PRIMARY KEY,
     first_name   VARCHAR,
     last_name    VARCHAR,
     faction      VARCHAR
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS speeches (
     session        VARCHAR,
     electoral_term INTEGER,
     date           DATE,
-    politician_id  INTEGER,
+    politician_id  BIGINT,
     first_name     VARCHAR,
     last_name      VARCHAR,
     faction        VARCHAR,
@@ -87,6 +87,21 @@ CREATE TABLE IF NOT EXISTS minister_roles (
     from_year  INTEGER,
     to_year    INTEGER,
     ministry   VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS zwischenrufe (
+    id                   INTEGER PRIMARY KEY,
+    speech_id            INTEGER,
+    electoral_term       INTEGER,
+    session              VARCHAR,
+    date                 DATE,
+    target_speaker_id    BIGINT,
+    target_speaker_party VARCHAR,
+    type                 VARCHAR,
+    caller_name          VARCHAR,
+    caller_party         VARCHAR,
+    text                 VARCHAR,
+    raw                  VARCHAR
 );
 """
 
@@ -187,6 +202,38 @@ def finalize_db(
 
         conn.execute("CHECKPOINT")
     print(f"[finalize] Done → {db_path}", flush=True)
+
+
+def load_zwischenrufe(
+    db_path: str | Path,
+    df: pd.DataFrame,
+    electoral_term: int,
+) -> None:
+    """Replace zwischenrufe for *electoral_term* with the given DataFrame.
+
+    Deletes all existing rows for the term first so re-runs are idempotent.
+    The id column is assigned as a sequential offset from the current table max.
+    """
+    if df.empty:
+        print(f"[load] No zwischenrufe to load for term {electoral_term}", flush=True)
+        return
+
+    with duckdb.connect(str(db_path)) as conn:
+        conn.execute("DELETE FROM zwischenrufe WHERE electoral_term = ?", [electoral_term])
+
+        max_id_row = conn.execute("SELECT COALESCE(MAX(id), -1) FROM zwischenrufe").fetchone()
+        offset = int(max_id_row[0]) + 1  # type: ignore[index]
+
+        df_to_insert = df.copy()
+        df_to_insert.insert(0, "id", range(offset, offset + len(df)))
+
+        conn.execute("INSERT INTO zwischenrufe SELECT * FROM df_to_insert")
+        print(
+            f"[load] Inserted {len(df_to_insert):,} zwischenrufe for term {electoral_term}",
+            flush=True,
+        )
+
+    print(f"[load] zwischenrufe done → {db_path}", flush=True)
 
 
 def query(db_path: str | Path, sql: str) -> pd.DataFrame:
