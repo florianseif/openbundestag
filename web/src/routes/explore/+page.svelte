@@ -184,11 +184,23 @@
 	}
 
 	function toggleTerm(term: number) {
-		if (filters.terms.includes(term)) {
-			filters.terms = filters.terms.filter((t) => t !== term);
-		} else {
-			filters.terms = [...filters.terms, term].sort((a, b) => a - b);
+		const cur = filters.terms;
+		// Clicking the only selected term clears the selection.
+		if (cur.length === 1 && cur[0] === term) {
+			filters.terms = [];
+			return;
 		}
+		// A single term is selected → extend to the contiguous range between the
+		// anchor and the clicked term (inclusive), filling in everything between.
+		if (cur.length === 1) {
+			const all = (meta?.terms ?? []).map((t) => t.term);
+			const lo = Math.min(cur[0], term);
+			const hi = Math.max(cur[0], term);
+			filters.terms = all.filter((t) => t >= lo && t <= hi).sort((a, b) => a - b);
+			return;
+		}
+		// No selection, or a range is already active → start fresh from this term.
+		filters.terms = [term];
 	}
 
 	// --- drill-down -----------------------------------------------------------
@@ -340,20 +352,6 @@ const partyBars = $derived(
 					{/if}
 				</div>
 				<div class="term-scroller">
-					<button
-						class="term-chip all-chip"
-						class:active={filters.terms.length === 0}
-						onclick={() => (filters.terms = [])}
-					>
-						<span class="chip-body">
-							<span class="chip-era">WP</span>
-							<span class="chip-num">Alle</span>
-							<span class="chip-years">1949–heute</span>
-							<span class="chip-chancellor">
-								<span class="chip-dot grad-dot"></span>Gesamt
-							</span>
-						</span>
-					</button>
 					{#each sortedTerms as t (t.term)}
 						{@const years = t.label.match(/\((.+?)\)/)?.[1] ?? ''}
 						{@const ch = termChancellors[t.term]}
@@ -792,9 +790,6 @@ const partyBars = $derived(
 			0 0 0 1px color-mix(in srgb, var(--chip-color, var(--accent)) 35%, transparent),
 			0 6px 22px -6px color-mix(in srgb, var(--chip-color, var(--accent)) 45%, transparent);
 	}
-	.all-chip {
-		--chip-color: var(--accent);
-	}
 	.chip-body {
 		display: flex;
 		flex-direction: column;
@@ -837,10 +832,6 @@ const partyBars = $derived(
 		margin-top: 0.35rem;
 		white-space: nowrap;
 	}
-	.all-chip .chip-chancellor {
-		color: var(--ink-2);
-		font-weight: 500;
-	}
 	.chip-dot {
 		width: 6px;
 		height: 6px;
@@ -848,14 +839,6 @@ const partyBars = $derived(
 		background: var(--chip-color, var(--line-2));
 		box-shadow: 0 0 6px -1px var(--chip-color, transparent);
 		flex-shrink: 0;
-	}
-	.grad-dot {
-		background: var(--grad);
-		box-shadow: none;
-	}
-	.all-chip .chip-num {
-		font-size: 1.25rem;
-		letter-spacing: -0.02em;
 	}
 
 	/* Controls row — count mode only */
