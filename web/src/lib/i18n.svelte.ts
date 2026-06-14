@@ -15,6 +15,7 @@ export const STRINGS: Dict = {
 		en: 'How does the language of the German Bundestag change? Search 760,000 speeches since 1949 — by word, party and speaker.'
 	},
 	cta_explore: { de: 'Daten erkunden', en: 'Explore the data' },
+	nav_wortsuche: { de: 'Wortsuche', en: 'Word Search' },
 	cta_try: { de: 'Selbst ausprobieren', en: 'Try it yourself' },
 	scroll_hint: { de: 'Scrollen', en: 'Scroll' },
 	stories_title: { de: 'Drei Schlaglichter', en: 'Three snapshots' },
