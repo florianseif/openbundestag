@@ -102,6 +102,12 @@ export const STRINGS: Dict = {
 	by_party_title: { de: 'Verteilung nach Partei', en: 'Distribution by party' },
 	by_term_title: { de: 'Reden je Wahlperiode', en: 'Speeches by term' },
 	top_speakers_title: { de: 'Wer spricht am meisten?', en: 'Who speaks the most?' },
+	tab_parties: { de: 'Parteien', en: 'Parties' },
+	tab_speakers: { de: 'Redner', en: 'Speakers' },
+	party_tab_unavailable: {
+		de: 'Parteienansicht ist nicht verfügbar, wenn nach einer einzelnen Person gefiltert wird.',
+		en: 'Party view is not available when filtering by a single politician.'
+	},
 	reset: { de: 'Zurücksetzen', en: 'Reset' },
 
 	footer_data: { de: 'Datenquelle & Lizenz', en: 'Data source & licence' },

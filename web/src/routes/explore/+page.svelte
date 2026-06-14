@@ -52,6 +52,12 @@
 	let queryError = $state<string | null>(null);
 
 	let topN = $state(15);
+	let viewTab = $state<'parties' | 'speakers'>('parties');
+
+	// Auto-switch to speakers tab when a politician is selected
+	$effect(() => {
+		if (filters.politician_id != null) viewTab = 'speakers';
+	});
 
 	async function boot() {
 		bootError = null;
@@ -335,40 +341,73 @@
 						</div>
 					</div>
 
-					<!-- Party + speakers -->
-					<div class="grid-2">
-						<section class="panel glass">
-							<header class="p-head"><h3>{i18n.t('by_party_title')}</h3></header>
-							{#if partyBars.length}
-								<div class="party-body">
-									<Donut slices={donutSlices} />
-									<HBars bars={partyBars} valueLabel={i18n.t('speeches')} />
-								</div>
-								{#if termBars.length}
-									<div class="term-section">
-										<span class="term-label">{i18n.t('by_term_title')}</span>
-										<HBars bars={termBars} valueLabel={i18n.t('speeches')} />
-									</div>
-								{/if}
-							{:else}
-								<p class="empty">—</p>
-							{/if}
-						</section>
+					<!-- Party / Speakers tabbed panel -->
+					<div class="analysis-panel panel glass">
+						<div class="analysis-tabs">
+							<button
+								class="view-tab"
+								class:active={viewTab === 'parties'}
+								onclick={() => (viewTab = 'parties')}
+							>
+								<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+									<circle cx="4" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/>
+									<circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/>
+								</svg>
+								{i18n.t('tab_parties')}
+							</button>
+							<button
+								class="view-tab"
+								class:active={viewTab === 'speakers'}
+								onclick={() => (viewTab = 'speakers')}
+							>
+								<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+									<circle cx="7" cy="4" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+									<path d="M2 12c0-2.761 2.239-5 5-5s5 2.239 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+								</svg>
+								{i18n.t('tab_speakers')}
+							</button>
+						</div>
 
-						<section class="panel glass">
-							<header class="p-head">
-								<h3>{i18n.t('top_speakers_title')}</h3>
-								<label class="slider">
-									{i18n.t('top_n')}: <strong>{topN}</strong>
-									<input type="range" min="5" max="30" bind:value={topN} />
-								</label>
-							</header>
-							{#if topBars.length}
-								<HBars bars={topBars} valueLabel={i18n.t('speeches')} />
+						{#if viewTab === 'parties'}
+							{#if filters.politician_id != null}
+								<p class="tab-unavailable">{i18n.t('party_tab_unavailable')}</p>
 							{:else}
-								<p class="empty">—</p>
+								<div class="tab-content">
+									<header class="p-head"><h3>{i18n.t('by_party_title')}</h3></header>
+									{#if partyBars.length}
+										<div class="party-body">
+											<Donut slices={donutSlices} />
+											<HBars bars={partyBars} valueLabel={i18n.t('speeches')} />
+										</div>
+										{#if termBars.length}
+											<div class="term-section">
+												<span class="term-label">{i18n.t('by_term_title')}</span>
+												<HBars bars={termBars} valueLabel={i18n.t('speeches')} />
+											</div>
+										{/if}
+									{:else}
+										<p class="empty">—</p>
+									{/if}
+								</div>
 							{/if}
-						</section>
+						{:else}
+							<div class="tab-content">
+								<header class="p-head">
+									<h3>{i18n.t('top_speakers_title')}</h3>
+									{#if filters.politician_id == null}
+										<label class="slider">
+											{i18n.t('top_n')}: <strong>{topN}</strong>
+											<input type="range" min="5" max="30" bind:value={topN} />
+										</label>
+									{/if}
+								</header>
+								{#if topBars.length}
+									<HBars bars={topBars} valueLabel={i18n.t('speeches')} />
+								{:else}
+									<p class="empty">—</p>
+								{/if}
+							</div>
+						{/if}
 					</div>
 				{/if}
 			{/if}
@@ -770,11 +809,31 @@
 		width: 110px;
 	}
 
-	.grid-2 {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 1.4rem;
-		align-items: start;
+	.analysis-panel {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+	.analysis-tabs {
+		display: inline-flex;
+		align-self: flex-start;
+		background: var(--surface-2);
+		border: 1px solid var(--line-2);
+		border-radius: 999px;
+		padding: 3px;
+		gap: 2px;
+		margin-bottom: 1.2rem;
+	}
+	.tab-content {
+		display: flex;
+		flex-direction: column;
+	}
+	.tab-unavailable {
+		color: var(--ink-3);
+		font-size: 0.85rem;
+		font-style: italic;
+		padding: 2rem 0;
+		text-align: center;
 	}
 	.party-body {
 		display: grid;
@@ -825,9 +884,6 @@
 		}
 		.metrics {
 			grid-template-columns: repeat(2, 1fr);
-		}
-		.grid-2 {
-			grid-template-columns: 1fr;
 		}
 		.party-body {
 			grid-template-columns: 1fr;

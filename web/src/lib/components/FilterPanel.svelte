@@ -25,15 +25,37 @@
 		filters.date_to = `${yTo}-12-31`;
 	});
 
+	// Parse "20th (2021–2025)" or "21st (2025–)" → [start, end]
+	function termYears(label: string): [number, number] {
+		const m = label.match(/\((\d{4})[–\-](\d{4})?/);
+		if (!m) return [fromYear, toYear];
+		return [+m[1], m[2] ? +m[2] : toYear];
+	}
+
 	function toggleParty(p: string) {
 		filters.parties = filters.parties.includes(p)
 			? filters.parties.filter((x) => x !== p)
 			: [...filters.parties, p];
 	}
+
 	function toggleTerm(t: number) {
-		filters.terms = filters.terms.includes(t)
+		const newTerms = filters.terms.includes(t)
 			? filters.terms.filter((x) => x !== t)
 			: [...filters.terms, t];
+		filters.terms = newTerms;
+		// Sync year range to cover all selected terms
+		if (newTerms.length > 0) {
+			const pairs = meta.terms
+				.filter((tm) => newTerms.includes(tm.term))
+				.map((tm) => termYears(tm.label));
+			yFrom = Math.min(...pairs.map((p) => p[0]));
+			yTo = Math.max(...pairs.map((p) => p[1]));
+		}
+	}
+
+	// Called only on direct user interaction with the year selects
+	function onYearChange() {
+		filters.terms = [];
 	}
 
 	// --- politician typeahead -------------------------------------------------
@@ -156,11 +178,11 @@
 	<section>
 		<span class="lbl">{i18n.t('period')}</span>
 		<div class="range">
-			<select bind:value={yFrom}>
+			<select bind:value={yFrom} onchange={onYearChange}>
 				{#each years.filter((y) => y <= yTo) as y (y)}<option value={y}>{y}</option>{/each}
 			</select>
 			<span class="dash">–</span>
-			<select bind:value={yTo}>
+			<select bind:value={yTo} onchange={onYearChange}>
 				{#each years.filter((y) => y >= yFrom) as y (y)}<option value={y}>{y}</option>{/each}
 			</select>
 		</div>
