@@ -68,6 +68,16 @@ PARTY_FULL_NAMES: dict[str, str] = {
     "Unknown":                "Unknown",
 }
 
+# Canonical set of real parliamentary factions. `faction_normalized` can also
+# hold a Bundesland name (e.g. "Bremen") for Bundesrat speakers addressing the
+# house — those are NOT parties and must never surface as a row/column in
+# the interruption heatmap. Any party-vs-party view whitelists this set.
+KNOWN_PARTIES: frozenset[str] = frozenset(PARTY_FULL_NAMES) - {"Unknown"}
+# SQL IN-list literal: 'CDU/CSU', 'SPD', ...  (single-quotes doubled to escape)
+KNOWN_PARTIES_SQL = ", ".join(
+    f"'{p.replace(chr(39), chr(39) * 2)}'" for p in KNOWN_PARTIES
+)
+
 # Parties that no longer hold seats — hidden by default in the UI.
 HISTORICAL_PARTIES: set[str] = {
     "KPD", "DP", "GB/BHE", "BP", "WAV", "DRP", "FVP", "FU", "DA", "DBP",
@@ -606,13 +616,13 @@ def query_interruption_matrix(
 
     Returns: caller_party, target_speaker_party, n
     """
-    # Exclude unattributable parties — these otherwise surface as a bogus "?"
-    # row/column in the heatmap.
+    # Restrict BOTH axes to real parliamentary factions. `faction_normalized`
+    # also carries Bundesland names (e.g. "Bremen") for Bundesrat speakers and
+    # the unattributable '', 'Unknown' sentinels — a whitelist guarantees none
+    # of those can ever leak into the heatmap as a bogus row/column.
     conditions = [
-        "caller_party IS NOT NULL",
-        "target_speaker_party IS NOT NULL",
-        "caller_party NOT IN ('', 'Unknown')",
-        "target_speaker_party NOT IN ('', 'Unknown')",
+        f"caller_party IN ({KNOWN_PARTIES_SQL})",
+        f"target_speaker_party IN ({KNOWN_PARTIES_SQL})",
         "type = ?",
     ]
     params: list = [type_filter]
