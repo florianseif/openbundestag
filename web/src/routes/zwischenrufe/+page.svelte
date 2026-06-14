@@ -412,20 +412,6 @@
 				<span class="adv-arrow">→</span>
 			</button>
 
-<<<<<<< HEAD
-				{#if matrixTab === 'matrix'}
-					<header class="p-head">
-						<div>
-							<h3>{i18n.t('zw_matrix_title')}</h3>
-							<p class="p-hint">{i18n.t('zw_matrix_hint')}</p>
-						</div>
-					</header>
-					{#if visibleMatrix.length}
-						<InterruptionMatrix rows={visibleMatrix} />
-					{:else}
-						<p class="empty">—</p>
-					{/if}
-=======
 			<button
 				role="tab"
 				aria-selected={activeView === 'parties'}
@@ -506,14 +492,8 @@
 						<p class="p-hint">{i18n.t('zw_matrix_hint')}</p>
 					</div>
 				</header>
-<<<<<<< HEAD
-				{#if matrix.length}
-					<InterruptionMatrix rows={matrix} />
->>>>>>> main
-=======
 				{#if visibleMatrix.length}
 					<InterruptionMatrix rows={visibleMatrix} />
->>>>>>> 37e4d61 (feat: add historical party filter to Zwischenrufe view)
 				{:else}
 					<p class="empty">—</p>
 				{/if}
