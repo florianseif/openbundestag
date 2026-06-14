@@ -104,8 +104,10 @@ export const STRINGS: Dict = {
 	top_speakers_title: { de: 'Wer spricht am meisten?', en: 'Who speaks the most?' },
 	tab_parties: { de: 'Parteien', en: 'Parties' },
 	tab_speakers: { de: 'Redner', en: 'Speakers' },
-	analyse_by: { de: 'Analysieren nach', en: 'Analyse by' },
-	any_politician_hint: { de: 'Tippe einen Namen ein, um zu filtern', en: 'Type a name to filter' },
+	party_tab_unavailable: {
+		de: 'Parteienansicht ist nicht verfügbar, wenn nach einer einzelnen Person gefiltert wird.',
+		en: 'Party view is not available when filtering by a single politician.'
+	},
 	reset: { de: 'Zurücksetzen', en: 'Reset' },
 
 	footer_data: { de: 'Datenquelle & Lizenz', en: 'Data source & licence' },

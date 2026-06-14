@@ -52,7 +52,6 @@
 	let queryError = $state<string | null>(null);
 
 	let topN = $state(15);
-	let viewMode = $state<'parties' | 'politicians'>('parties');
 
 	async function boot() {
 		bootError = null;
@@ -228,7 +227,7 @@
 				<span class="eyebrow">{i18n.t('filters')}</span>
 				<button class="reset" onclick={reset}>{i18n.t('reset')}</button>
 			</div>
-			<FilterPanel bind:filters {meta} bind:viewMode />
+			<FilterPanel bind:filters {meta} />
 		</aside>
 
 		<div class="content">
@@ -336,8 +335,8 @@
 						</div>
 					</div>
 
-					<!-- Bottom panel: switches content based on viewMode -->
-					{#if viewMode === 'parties'}
+					<!-- Party + speakers -->
+					<div class="grid-2">
 						<section class="panel glass">
 							<header class="p-head"><h3>{i18n.t('by_party_title')}</h3></header>
 							{#if partyBars.length}
@@ -355,16 +354,14 @@
 								<p class="empty">—</p>
 							{/if}
 						</section>
-					{:else}
+
 						<section class="panel glass">
 							<header class="p-head">
 								<h3>{i18n.t('top_speakers_title')}</h3>
-								{#if filters.politician_id == null}
-									<label class="slider">
-										{i18n.t('top_n')}: <strong>{topN}</strong>
-										<input type="range" min="5" max="30" bind:value={topN} />
-									</label>
-								{/if}
+								<label class="slider">
+									{i18n.t('top_n')}: <strong>{topN}</strong>
+									<input type="range" min="5" max="30" bind:value={topN} />
+								</label>
 							</header>
 							{#if topBars.length}
 								<HBars bars={topBars} valueLabel={i18n.t('speeches')} />
@@ -372,7 +369,7 @@
 								<p class="empty">—</p>
 							{/if}
 						</section>
-					{/if}
+					</div>
 				{/if}
 			{/if}
 		</div>
@@ -773,6 +770,12 @@
 		width: 110px;
 	}
 
+	.grid-2 {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1.4rem;
+		align-items: start;
+	}
 	.party-body {
 		display: grid;
 		grid-template-columns: 200px 1fr;
@@ -822,6 +825,9 @@
 		}
 		.metrics {
 			grid-template-columns: repeat(2, 1fr);
+		}
+		.grid-2 {
+			grid-template-columns: 1fr;
 		}
 		.party-body {
 			grid-template-columns: 1fr;

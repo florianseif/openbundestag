@@ -4,11 +4,7 @@
 	import { api } from '$lib/api';
 	import { partyColor, partyFullName } from '$lib/format';
 
-	let {
-		filters = $bindable(),
-		meta,
-		viewMode = $bindable<'parties' | 'politicians'>('parties')
-	}: { filters: Filters; meta: Meta; viewMode: 'parties' | 'politicians' } = $props();
+	let { filters = $bindable(), meta }: { filters: Filters; meta: Meta } = $props();
 
 	let showHistorical = $state(false);
 	const historical = $derived(new Set(meta.historical_parties));
@@ -28,16 +24,6 @@
 		filters.date_from = `${yFrom}-01-01`;
 		filters.date_to = `${yTo}-12-31`;
 	});
-
-	function setMode(m: 'parties' | 'politicians') {
-		if (m === viewMode) return;
-		viewMode = m;
-		if (m === 'politicians') {
-			filters.parties = [];
-		} else {
-			clearPol();
-		}
-	}
 
 	function toggleParty(p: string) {
 		filters.parties = filters.parties.includes(p)
@@ -75,27 +61,6 @@
 </script>
 
 <div class="panel">
-	<!-- Mode switch -->
-	<section class="mode-section">
-		<span class="lbl">{i18n.t('analyse_by')}</span>
-		<div class="mode-seg">
-			<button class:on={viewMode === 'parties'} onclick={() => setMode('parties')}>
-				<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-					<circle cx="4" cy="6.5" r="2.8" stroke="currentColor" stroke-width="1.4"/>
-					<circle cx="9" cy="6.5" r="2.8" stroke="currentColor" stroke-width="1.4"/>
-				</svg>
-				{i18n.t('tab_parties')}
-			</button>
-			<button class:on={viewMode === 'politicians'} onclick={() => setMode('politicians')}>
-				<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-					<circle cx="6.5" cy="4" r="2.3" stroke="currentColor" stroke-width="1.4"/>
-					<path d="M1.5 11.5c0-2.761 2.239-5 5-5s5 2.239 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-				</svg>
-				{i18n.t('tab_speakers')}
-			</button>
-		</div>
-	</section>
-
 	<section>
 		<label class="lbl" for="kw">{i18n.t('keyword')}</label>
 		<input
@@ -113,61 +78,58 @@
 		</div>
 	</section>
 
-	{#if viewMode === 'parties'}
-		<section>
-			<div class="lbl-row">
-				<span class="lbl">{i18n.t('parties')}</span>
-				<label class="hist">
-					<input type="checkbox" bind:checked={showHistorical} />
-					{i18n.t('incl_historical')}
-				</label>
-			</div>
-			<div class="chips">
-				{#each visibleParties as p (p)}
-					<button
-						class="chip"
-						class:on={filters.parties.includes(p)}
-						style:--c={partyColor(p)}
-						onclick={() => toggleParty(p)}
-						data-tip={partyFullName(p)}
-					>
-						<span class="dot" style:background={partyColor(p)}></span>{p}
-					</button>
-				{/each}
-			</div>
-			{#if filters.parties.length === 0}<p class="hint">{i18n.t('all_parties')}</p>{/if}
-		</section>
-	{:else}
-		<section class="pol">
-			<label class="lbl" for="pol">{i18n.t('politician')}</label>
-			<div class="pol-input">
-				<input
-					id="pol"
-					value={polQuery}
-					oninput={(e) => onPolInput(e.currentTarget.value)}
-					onfocus={() => (polOpen = true)}
-					placeholder={i18n.t('any_politician')}
-					autocomplete="off"
-				/>
-				{#if filters.politician_id != null}
-					<button class="clr" onclick={clearPol} aria-label="clear">✕</button>
-				{/if}
-				{#if polOpen && polResults.length}
-					<ul class="dropdown">
-						{#each polResults as p (p.id)}
-							<li>
-								<button onclick={() => pickPol(p)}>
-									<span class="dot" style:background={partyColor(p.party)}></span>
-									{p.name}<span class="muted"> · {p.party}</span>
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
-			{#if filters.politician_id == null}<p class="hint">{i18n.t('any_politician_hint')}</p>{/if}
-		</section>
-	{/if}
+	<section>
+		<div class="lbl-row">
+			<span class="lbl">{i18n.t('parties')}</span>
+			<label class="hist">
+				<input type="checkbox" bind:checked={showHistorical} />
+				{i18n.t('incl_historical')}
+			</label>
+		</div>
+		<div class="chips">
+			{#each visibleParties as p (p)}
+				<button
+					class="chip"
+					class:on={filters.parties.includes(p)}
+					style:--c={partyColor(p)}
+					onclick={() => toggleParty(p)}
+					data-tip={partyFullName(p)}
+				>
+					<span class="dot" style:background={partyColor(p)}></span>{p}
+				</button>
+			{/each}
+		</div>
+		{#if filters.parties.length === 0}<p class="hint">{i18n.t('all_parties')}</p>{/if}
+	</section>
+
+	<section class="pol">
+		<label class="lbl" for="pol">{i18n.t('politician')}</label>
+		<div class="pol-input">
+			<input
+				id="pol"
+				value={polQuery}
+				oninput={(e) => onPolInput(e.currentTarget.value)}
+				onfocus={() => (polOpen = true)}
+				placeholder={i18n.t('any_politician')}
+				autocomplete="off"
+			/>
+			{#if filters.politician_id != null}
+				<button class="clr" onclick={clearPol} aria-label="clear">✕</button>
+			{/if}
+			{#if polOpen && polResults.length}
+				<ul class="dropdown">
+					{#each polResults as p (p.id)}
+						<li>
+							<button onclick={() => pickPol(p)}>
+								<span class="dot" style:background={partyColor(p.party)}></span>
+								{p.name}<span class="muted"> · {p.party}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	</section>
 
 	<section>
 		<span class="lbl">{i18n.t('period')}</span>
@@ -225,43 +187,6 @@
 		color: var(--ink-3);
 		margin-bottom: 0.5rem;
 	}
-
-	/* Mode switch */
-	.mode-section {
-		padding-bottom: 1.1rem;
-		border-bottom: 1px solid var(--line);
-	}
-	.mode-seg {
-		display: flex;
-		gap: 0;
-		border: 1px solid var(--line-2);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-	}
-	.mode-seg button {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.4rem;
-		font: inherit;
-		font-size: 0.84rem;
-		font-weight: 600;
-		padding: 0.6rem 0.5rem;
-		border: none;
-		background: var(--card);
-		color: var(--ink-3);
-		cursor: pointer;
-		transition: background 0.18s, color 0.18s;
-	}
-	.mode-seg button.on {
-		background: var(--accent);
-		color: #fff;
-	}
-	.mode-seg button.on svg {
-		opacity: 0.9;
-	}
-
 	.lbl-row {
 		display: flex;
 		justify-content: space-between;
