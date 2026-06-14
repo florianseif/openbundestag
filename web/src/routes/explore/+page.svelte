@@ -4,7 +4,7 @@
 	import { api, ApiError } from '$lib/api';
 	import { setPartyMeta } from '$lib/format';
 	import { i18n } from '$lib/i18n.svelte';
-	import { formatDate, partyColor } from '$lib/format';
+	import { partyColor } from '$lib/format';
 	import governmentsRaw from '$lib/governments.json';
 	import type {
 		Meta,
@@ -21,7 +21,6 @@
 	import TimelineChart from '$lib/components/TimelineChart.svelte';
 	import HBars from '$lib/components/HBars.svelte';
 	import Donut from '$lib/components/Donut.svelte';
-	import Counter from '$lib/components/Counter.svelte';
 	import SpeechModal from '$lib/components/SpeechModal.svelte';
 	import SpeechTable from '$lib/components/SpeechTable.svelte';
 
@@ -211,8 +210,7 @@
 	const cleanParties = $derived(
 		byParty.filter((d) => d.party !== 'Unknown').sort((a, b) => b.speeches - a.speeches)
 	);
-	const leading = $derived(cleanParties[0] ?? null);
-	const partyBars = $derived(
+const partyBars = $derived(
 		cleanParties.map((d) => ({ label: d.party, value: d.speeches, color: partyColor(d.party) }))
 	);
 	const donutSlices = $derived(
@@ -411,28 +409,6 @@
 					<p>{i18n.t('no_results', { word: filters.word })}</p>
 				</div>
 			{:else}
-				<!-- Metric strip -->
-				<div class="metrics">
-					<div class="metric glass">
-						<span class="m-num">{#if total}<Counter value={total.count} />{:else}—{/if}</span>
-						<span class="m-cap">{i18n.t('metric_speeches')}</span>
-					</div>
-					<div class="metric glass">
-						<span class="m-num small">{formatDate(total?.min_date ?? null, i18n.lang)}</span>
-						<span class="m-cap">{i18n.t('metric_first')}</span>
-					</div>
-					<div class="metric glass">
-						<span class="m-num small">{formatDate(total?.max_date ?? null, i18n.lang)}</span>
-						<span class="m-cap">{i18n.t('metric_latest')}</span>
-					</div>
-					<div class="metric glass" style:--lc={leading ? partyColor(leading.party) : 'var(--ink-3)'}>
-						<span class="m-num small lead">
-							{#if leading}<span class="lead-dot"></span>{leading.party}{:else}—{/if}
-						</span>
-						<span class="m-cap">{i18n.t('leading_party')}</span>
-					</div>
-				</div>
-
 				{#if queryError}
 					<div class="empty-state glass"><p class="err">{queryError}</p></div>
 				{:else}
@@ -989,37 +965,6 @@
 		min-width: 0;
 	}
 
-	.metrics {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 0.9rem;
-	}
-	.metric {
-		padding: 1rem 1.1rem;
-		position: relative;
-		overflow: hidden;
-		transition: transform 0.3s var(--spring), border-color 0.3s;
-	}
-	.metric::before {
-		content: '';
-		position: absolute; inset: 0 0 auto 0;
-		height: 2px; background: var(--grad); opacity: 0.7;
-	}
-	.metric:hover { transform: translateY(-3px); border-color: var(--line-2); }
-	.m-num {
-		display: block;
-		font-family: var(--display);
-		font-size: 2rem; font-weight: 600;
-		line-height: 1.05; letter-spacing: -0.02em;
-	}
-	.m-num.small { font-size: 1.25rem; }
-	.m-num.lead { display: flex; align-items: center; gap: 0.45rem; }
-	.lead-dot {
-		width: 11px; height: 11px; border-radius: 50%;
-		background: var(--lc); box-shadow: 0 0 12px -1px var(--lc); flex: none;
-	}
-	.m-cap { font-size: 0.76rem; color: var(--ink-3); margin-top: 0.35rem; display: block; }
-
 	/* ── Hero ──────────────────────────────────────────────────────────── */
 	.hero-wrap { display: flex; flex-direction: column; gap: 0; }
 	.hero-controls {
@@ -1121,7 +1066,6 @@
 
 	/* ── Responsive ────────────────────────────────────────────────────── */
 	@media (max-width: 860px) {
-		.metrics { grid-template-columns: repeat(2, 1fr); }
 		.grid-2 { grid-template-columns: 1fr; }
 		.party-body { grid-template-columns: 1fr; }
 		.p-head { flex-direction: column; }
@@ -1129,7 +1073,6 @@
 		.pol-input-wrap { max-width: none; }
 	}
 	@media (max-width: 520px) {
-		.metrics { grid-template-columns: 1fr; }
 		.controls-row { gap: 0.6rem; }
 		.term-row { gap: 0.5rem; }
 	}
