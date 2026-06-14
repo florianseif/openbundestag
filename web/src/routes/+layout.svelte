@@ -6,6 +6,7 @@
 
 	let { children } = $props();
 	const onExplore = $derived(page.url.pathname.startsWith('/explore'));
+	const onZwischenrufe = $derived(page.url.pathname.startsWith('/zwischenrufe'));
 </script>
 
 <header class="site">
@@ -19,6 +20,7 @@
 			{#if !onExplore}
 				<a class="navlink" href="/explore">{i18n.t('cta_explore')} →</a>
 			{/if}
+			<a class="navlink" class:active={onZwischenrufe} href="/zwischenrufe">{i18n.t('nav_zwischenrufe')}</a>
 			<a class="navlink" href="/about">{i18n.lang === 'de' ? 'Über' : 'About'}</a>
 			<LangToggle />
 		</nav>
@@ -108,7 +110,8 @@
 		color: var(--ink);
 		transition: color 0.2s;
 	}
-	.navlink:hover {
+	.navlink:hover,
+	.navlink.active {
 		color: var(--accent);
 	}
 	main {

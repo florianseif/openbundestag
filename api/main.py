@@ -262,3 +262,95 @@ def speech(speech_id: int) -> dict:
     if row is None:
         raise HTTPException(404, f"Speech {speech_id} not found.")
     return {k: _jsonable(v) for k, v in row.items()}
+
+
+# ---------------------------------------------------------------------------
+# Zwischenrufe endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/zwischenrufe/meta")
+def zwischenrufe_meta() -> dict:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return {"available": False, "total": 0}
+    row = c.execute("SELECT COUNT(*) FROM zwischenrufe").fetchone()
+    total = int(row[0]) if row else 0  # type: ignore[index]
+    return {"available": total > 0, "total": total}
+
+
+@app.get("/api/zwischenrufe/timeline")
+def zwischenrufe_timeline(
+    type_filter: str | None = None,
+    party_filter: str | None = None,
+    term_filter: int | None = None,
+) -> list[dict]:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return []
+    key = ("zw_timeline", type_filter, party_filter, term_filter)
+    return _cached(key, lambda: _records(
+        q.query_zwischenrufe_timeline(c, type_filter, party_filter, term_filter)
+    ))
+
+
+@app.get("/api/zwischenrufe/top-callers")
+def zwischenrufe_top_callers(
+    type_filter: str = "Zwischenruf",
+    term_filter: int | None = None,
+    party_filter: str | None = None,
+    limit: int = Query(20, ge=1, le=50),
+) -> list[dict]:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return []
+    key = ("zw_top", type_filter, term_filter, party_filter, limit)
+    return _cached(key, lambda: _records(
+        q.query_top_zwischenrufer(c, type_filter, term_filter, party_filter, limit)
+    ))
+
+
+@app.get("/api/zwischenrufe/by-party")
+def zwischenrufe_by_party(
+    type_filter: str = "Zwischenruf",
+    term_filter: int | None = None,
+) -> list[dict]:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return []
+    key = ("zw_by_party", type_filter, term_filter)
+    return _cached(key, lambda: _records(
+        q.query_zwischenrufe_by_caller_party(c, type_filter, term_filter)
+    ))
+
+
+@app.get("/api/zwischenrufe/matrix")
+def zwischenrufe_matrix(
+    type_filter: str = "Zwischenruf",
+    term_filter: int | None = None,
+) -> list[dict]:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return []
+    key = ("zw_matrix", type_filter, term_filter)
+    return _cached(key, lambda: _records(
+        q.query_interruption_matrix(c, type_filter, term_filter)
+    ))
+
+
+@app.get("/api/zwischenrufe/samples")
+def zwischenrufe_samples(
+    keyword: str | None = None,
+    caller_party: str | None = None,
+    caller_name: str | None = None,
+    target_party: str | None = None,
+    term_filter: int | None = None,
+    limit: int = Query(50, ge=1, le=200),
+) -> list[dict]:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return []
+    if keyword and len(keyword) > q.KEYWORD_MAX_LEN:
+        raise HTTPException(400, f"keyword must be ≤ {q.KEYWORD_MAX_LEN} characters.")
+    return _records(q.query_zwischenrufe_samples(
+        c, keyword, caller_party, caller_name, target_party, term_filter, limit
+    ))

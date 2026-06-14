@@ -54,7 +54,7 @@ FACTION_NORMALIZE_SQL = """
 
 DDL = """
 CREATE TABLE IF NOT EXISTS speakers (
-    id           INTEGER PRIMARY KEY,
+    id           BIGINT PRIMARY KEY,
     first_name   VARCHAR,
     last_name    VARCHAR,
     faction      VARCHAR
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS speeches (
     session        VARCHAR,
     electoral_term INTEGER,
     date           DATE,
-    politician_id  INTEGER,
+    politician_id  BIGINT,
     first_name     VARCHAR,
     last_name      VARCHAR,
     faction        VARCHAR,
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS zwischenrufe (
     electoral_term       INTEGER,
     session              VARCHAR,
     date                 DATE,
-    target_speaker_id    INTEGER,
+    target_speaker_id    BIGINT,
     target_speaker_party VARCHAR,
     type                 VARCHAR,
     caller_name          VARCHAR,

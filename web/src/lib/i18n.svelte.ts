@@ -110,6 +110,41 @@ export const STRINGS: Dict = {
 	},
 	reset: { de: 'Zurücksetzen', en: 'Reset' },
 
+	// Zwischenrufe explorer
+	nav_zwischenrufe: { de: 'Zwischenrufe', en: 'Heckling' },
+	zw_title: { de: 'Zwischenrufe', en: 'Parliamentary Heckling' },
+	zw_subtitle: {
+		de: 'Wer unterbricht wen im Deutschen Bundestag?',
+		en: 'Who heckles whom in the German Bundestag?'
+	},
+	zw_total: { de: 'Reaktionen gesamt', en: 'Total reactions' },
+	zw_top_caller: { de: 'Aktivste/r Zwischenrufer/in', en: 'Most active heckler' },
+	zw_most_active_party: { de: 'Lauteste Fraktion', en: 'Loudest faction' },
+	zw_most_interrupted: { de: 'Meist unterbrochen', en: 'Most interrupted' },
+	zw_matrix_title: { de: 'Wer ruft wem dazwischen?', en: 'Who heckles whom?' },
+	zw_matrix_hint: {
+		de: 'Zeilen = Rufende Partei · Spalten = Unterbrochene Partei',
+		en: 'Rows = calling party · Columns = interrupted party'
+	},
+	zw_top_title: { de: 'Top Zwischenrufer/innen', en: 'Top hecklers' },
+	zw_timeline_title: { de: 'Reaktionen über die Zeit', en: 'Reactions over time' },
+	zw_feed_title: { de: 'Einzelne Zwischenrufe', en: 'Individual interjections' },
+	zw_search_ph: { de: 'Zwischenrufe durchsuchen…', en: 'Search interjections…' },
+	zw_filter_type: { de: 'Typ', en: 'Type' },
+	zw_filter_caller: { de: 'Rufende Partei', en: 'Calling party' },
+	zw_filter_target: { de: 'Unterbrochene Partei', en: 'Interrupted party' },
+	zw_type_zwischenruf: { de: 'Zwischenruf', en: 'Interjection' },
+	zw_type_beifall: { de: 'Beifall', en: 'Applause' },
+	zw_type_heiterkeit: { de: 'Heiterkeit', en: 'Laughter' },
+	zw_type_widerspruch: { de: 'Widerspruch', en: 'Dissent' },
+	zw_type_zuruf: { de: 'Zuruf', en: 'Shout' },
+	zw_calls: { de: 'Rufe', en: 'calls' },
+	zw_unavailable: {
+		de: 'Zwischenrufe noch nicht extrahiert. Führe zuerst --phase zwischenrufe aus.',
+		en: 'Interjections not yet extracted. Run --phase zwischenrufe first.'
+	},
+	zw_no_results: { de: 'Keine Zwischenrufe gefunden.', en: 'No interjections found.' },
+
 	footer_data: { de: 'Datenquelle & Lizenz', en: 'Data source & licence' },
 	footer_body: {
 		de: 'Redebeiträge: offizielle Plenarprotokolle des Deutschen Bundestages (§ 5 Abs. 1 UrhG), © Deutscher Bundestag. Ministerdaten: Wikipedia (CC BY-SA 4.0). Ein unabhängiges Projekt, inspiriert von Open Discourse.',
