@@ -121,6 +121,56 @@ Place the file in the project root, then run the app normally. Skip everything i
 
 ---
 
+## Architecture: The pipeline
+
+Here's how the database is built from raw Bundestag XML:
+
+```mermaid
+graph LR
+    A["🌐 Bundestag Open Data<br/>XML files & ZIPs"] -->|download| B["📥 EXTRACT<br/>src/extract.py<br/>_pw_download.py"]
+    
+    B -->|raw files| C["📂 data/term_XX/"]
+    C -->|parse XML| D["🔄 TRANSFORM<br/>src/transform.py<br/>Modern & Legacy paths"]
+    
+    D -->|speakers DF| E["📝 LOAD<br/>src/load.py"]
+    D -->|speeches DF| E
+    
+    E -->|create schema| F["🗄️ DuckDB<br/>openbundestag-data.db"]
+    
+    G["🌍 Wikipedia<br/>Minister data"] -->|scrape| H["👨‍⚖️ MINISTERS<br/>src/scrape_ministers.py"]
+    H -->|ministers table| F
+    
+    F -->|reads faction column| I["✨ FINALIZE<br/>src/load.py<br/>Materialized columns"]
+    I -->|adds<br/>faction_normalized<br/>search_text| J["✅ READY<br/>speeches + speakers<br/>+ zwischenrufe"]
+    
+    J -->|full-text search| K["📊 App & Website<br/>Streamlit + SvelteKit"]
+    
+    style A fill:#e1f5ff
+    style B fill:#fff3e0
+    style C fill:#f5f5f5
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#c8e6c9
+    style G fill:#e1f5ff
+    style H fill:#fff3e0
+    style I fill:#fff3e0
+    style J fill:#c8e6c9
+    style K fill:#ffe0b2
+```
+
+### Pipeline phases
+
+| Phase | Module | Input | Output | Notes |
+|---|---|---|---|---|
+| **Extract** | `src/extract.py` | Bundestag open-data URLs | `data/term_XX/*.xml` | Downloads via Playwright (bot protection). Idempotent — skips existing files. |
+| **Transform** | `src/transform.py` | Raw XML files | `speakers_df`, `speeches_df` | Auto-detects modern (terms 19–21) vs legacy (1–18) format. Two parse paths: structured XML vs regex-based. |
+| **Load** | `src/load.py` | DataFrames | DuckDB schema + `speakers`, `speeches` tables | Creates `openbundestag-data.db` if absent, appends data by term. |
+| **Ministers** | `src/scrape_ministers.py` | Wikipedia | `ministers`, `roles` tables | Parallel to load — scrapes German federal minister data (CC BY-SA). Needed for faction fallback in finalize. |
+| **Finalize** | `src/load.py` | `speeches` table + ministers table | `faction_normalized`, `search_text` columns | Materializes two derived columns the app queries at runtime. ~5× faster than computing on-the-fly. Idempotent. |
+| **Zwischenrufe** | `src/zwischenrufe.py` | XML + `speeches` table | `zwischenrufe` table | Extracts parliamentary interjections, applause, heckling. Must run **after finalize**. Idempotent per term. |
+
+---
+
 ## Frontend
 
 A Streamlit app (`app.py`) lets you explore word usage interactively in the browser — no coding required after setup.
