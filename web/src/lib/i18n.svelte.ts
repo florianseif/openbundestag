@@ -109,6 +109,16 @@ export const STRINGS: Dict = {
 	},
 	reset: { de: 'Zurücksetzen', en: 'Reset' },
 
+	// Wortsuche (explore) hero
+	ws_title: { de: 'Wortsuche', en: 'Word Search' },
+	ws_subtitle: {
+		de: 'Wie sich ein Wort durch 75 Jahre Bundestagsdebatten zieht.',
+		en: 'How a word moves through 75 years of Bundestag debates.'
+	},
+	hero_terms: { de: 'Wahlperioden', en: 'Electoral terms' },
+	hero_parties: { de: 'Fraktionen', en: 'Factions' },
+	hero_reactions: { de: 'Reaktionen', en: 'Reactions' },
+
 	// Zwischenrufe explorer
 	nav_zwischenrufe: { de: 'Zwischenrufe', en: 'Heckling' },
 	zw_title: { de: 'Zwischenrufe', en: 'Parliamentary Heckling' },
