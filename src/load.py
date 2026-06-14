@@ -22,25 +22,6 @@ _BUNDESLAENDER: tuple[str, ...] = (
 _BUNDESLAENDER_SQL = ", ".join(f"'{s}'" for s in _BUNDESLAENDER)
 
 # ---------------------------------------------------------------------------
-# Guest detection (single source of truth)
-# ---------------------------------------------------------------------------
-# A speech is flagged as a guest speech when the speaker is NOT a Bundestag
-# member (MdB) in that session.  The clearest signal is a Bundesland name in
-# the faction field — these are Bundesrat representatives or state officials
-# addressing the Bundestag, not elected MPs.
-#
-# Materialised into speeches.is_guest by finalize_db().  All dashboard queries
-# filter WHERE NOT is_guest so guest speeches are excluded from analysis.
-# The faction_normalized column still resolves their party where possible so
-# the data is available for manual review.
-IS_GUEST_SQL = f"""
-    CASE
-        WHEN trim(faction) IN ({_BUNDESLAENDER_SQL}) THEN true
-        ELSE false
-    END
-"""
-
-# ---------------------------------------------------------------------------
 # Canonical faction normalisation (single source of truth)
 # ---------------------------------------------------------------------------
 # Resolves the party/faction for every speech.  For speeches that carry no
@@ -85,29 +66,6 @@ FACTION_NORMALIZE_SQL = f"""
         WHEN regexp_matches(faction, 'GRÜNEN|GRUENEN|GRÜNEN') THEN 'Bündnis 90/Die Grünen'
         WHEN trim(faction) IN ('CDU/CSU', 'SPD', 'FDP', 'AfD', 'Bündnis 90/Die Grünen', 'Die Linke', 'PDS', 'BSW', 'Fraktionslos')
             THEN trim(faction)
-        -- Bundesrat speakers carry their state as the faction field.  Many are
-        -- party members who also hold a state office — try to resolve their
-        -- actual party before falling back to Unknown.
-        WHEN trim(faction) IN ({_BUNDESLAENDER_SQL})
-            THEN COALESCE(
-                -- 1. ministers table (Minister-Präsidenten are often listed)
-                (SELECT m.party FROM ministers m
-                 WHERE LOWER(m.full_name) = LOWER(trim(s.first_name) || ' ' || s.last_name)
-                    OR (LOWER(m.last_name) = LOWER(s.last_name)
-                        AND LOWER(trim(s.first_name)) LIKE LOWER(m.first_name) || '%')
-                 ORDER BY m.full_name
-                 LIMIT 1),
-                -- 2. name-based cross-reference — find other speeches by the
-                --    same person that carry an actual party (not a state name)
-                (SELECT s3.faction FROM speeches s3
-                 WHERE LOWER(s3.last_name) = LOWER(s.last_name)
-                   AND LOWER(trim(s3.first_name)) LIKE LOWER(split_part(trim(s.first_name), ' ', 1)) || '%'
-                   AND s3.faction IS NOT NULL AND trim(s3.faction) != ''
-                   AND trim(s3.faction) NOT IN ({_BUNDESLAENDER_SQL})
-                 ORDER BY s3.date, s3.id
-                 LIMIT 1),
-                'Unknown'
-            )
         ELSE COALESCE(
             -- For legacy data with city/district names in faction, try to resolve via politician_id
             (SELECT s2.faction FROM speeches s2
@@ -259,15 +217,13 @@ def finalize_db(
     demand. Either way the full original-cased text is always available.
     """
     with duckdb.connect(str(db_path)) as conn:
+        _delete_guests(conn, db_path)
+
         conn.execute("ALTER TABLE speeches ADD COLUMN IF NOT EXISTS faction_normalized VARCHAR")
         conn.execute(f"UPDATE speeches s SET faction_normalized = ({FACTION_NORMALIZE_SQL})")
         print("[finalize] faction_normalized materialised", flush=True)
 
-        conn.execute("ALTER TABLE speeches ADD COLUMN IF NOT EXISTS is_guest BOOLEAN")
-        conn.execute(f"UPDATE speeches SET is_guest = ({IS_GUEST_SQL})")
-        print("[finalize] is_guest materialised", flush=True)
-
-        _log_finalize_summary(conn, db_path)
+        _log_unknown_speakers(conn, db_path)
 
         conn.execute("ALTER TABLE speeches ADD COLUMN IF NOT EXISTS search_text VARCHAR")
         conn.execute("UPDATE speeches SET search_text = lower(speech_content)")
@@ -286,37 +242,34 @@ def finalize_db(
     print(f"[finalize] Done → {db_path}", flush=True)
 
 
-def _log_finalize_summary(
+def _delete_guests(
     conn: duckdb.DuckDBPyConnection,
     db_path: str | Path,
 ) -> None:
-    """Log speakers excluded from the dashboards after finalize for review.
+    """Remove non-MdB (guest) speeches before materialising derived columns.
 
-    Two categories are written to separate CSVs next to the DB file:
-      * <db>.guests.csv — non-MdB speakers (is_guest=true), e.g. Bundesrat
-        representatives.  Excluded by design; faction resolved where possible.
-      * <db>.unknown_speakers.csv — MdBs (is_guest=false) whose party could
-        not be resolved.  These are worth investigating for pipeline fixes.
+    Bundesrat speakers carry a Bundesland name as their faction field.  They
+    are not elected Bundestag members and are excluded from all analysis.  We
+    log them to a CSV first so the deletion is auditable, then delete from both
+    speeches and any stale zwischenrufe that targeted them.
     """
-    # Guests: speakers flagged as non-MdB
     guest_df: pd.DataFrame = conn.execute(
-        """
+        f"""
         SELECT
             first_name || ' ' || last_name AS speaker,
             faction                         AS raw_faction,
-            faction_normalized              AS resolved_party,
             COUNT(*)                        AS speeches
         FROM speeches
-        WHERE is_guest = true
-        GROUP BY speaker, raw_faction, resolved_party
+        WHERE trim(faction) IN ({_BUNDESLAENDER_SQL})
+        GROUP BY speaker, raw_faction
         ORDER BY speeches DESC
         """
     ).fetchdf()
 
-    guest_total = int(guest_df["speeches"].sum()) if not guest_df.empty else 0
+    total = int(guest_df["speeches"].sum()) if not guest_df.empty else 0
     print(
-        f"[finalize] Guests (non-MdB): {guest_total:,} speeches, "
-        f"{len(guest_df):,} distinct speakers — excluded from dashboards",
+        f"[finalize] Removing {total:,} guest speeches "
+        f"({len(guest_df):,} distinct speakers)",
         flush=True,
     )
     if not guest_df.empty:
@@ -324,7 +277,21 @@ def _log_finalize_summary(
         guest_df.to_csv(log_path, index=False)
         print(f"[finalize] Guest speakers logged → {log_path}", flush=True)
 
-    # Unknowns: MdBs whose party we couldn't resolve
+    conn.execute(
+        f"DELETE FROM speeches WHERE trim(faction) IN ({_BUNDESLAENDER_SQL})"
+    )
+
+
+def _log_unknown_speakers(
+    conn: duckdb.DuckDBPyConnection,
+    db_path: str | Path,
+) -> None:
+    """Log MdBs whose party could not be resolved to a CSV for review.
+
+    These entries remain in the DB with faction_normalized = 'Unknown' and are
+    excluded from dashboard queries.  The CSV shows the raw faction string so
+    you can spot missing normalisation rules.
+    """
     unknown_df: pd.DataFrame = conn.execute(
         """
         SELECT
@@ -333,15 +300,14 @@ def _log_finalize_summary(
             COUNT(*)                        AS speeches
         FROM speeches
         WHERE faction_normalized = 'Unknown'
-          AND is_guest = false
         GROUP BY speaker, raw_faction
         ORDER BY speeches DESC
         """
     ).fetchdf()
 
-    unknown_total = int(unknown_df["speeches"].sum()) if not unknown_df.empty else 0
+    total = int(unknown_df["speeches"].sum()) if not unknown_df.empty else 0
     print(
-        f"[finalize] Unknown party (MdB): {unknown_total:,} speeches, "
+        f"[finalize] Unknown party: {total:,} speeches, "
         f"{len(unknown_df):,} distinct speakers",
         flush=True,
     )
