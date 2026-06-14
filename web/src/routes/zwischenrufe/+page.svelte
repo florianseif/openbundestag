@@ -27,7 +27,7 @@
 	let bootError = $state<string | null>(null);
 
 	let typeFilter = $state<ZwischenrufType | ''>('Zwischenruf');
-	let terms = $state<number[]>([]);
+	let terms = $state<number[]>([21]);
 	let activeView = $state<'matrix' | 'parties' | 'callers' | 'feed'>('matrix');
 
 	// ── boot ──────────────────────────────────────────────────────────────────
