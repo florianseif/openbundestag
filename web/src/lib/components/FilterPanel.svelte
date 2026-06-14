@@ -25,37 +25,10 @@
 		filters.date_to = `${yTo}-12-31`;
 	});
 
-	// Parse "20th (2021–2025)" or "21st (2025–)" → [start, end]
-	function termYears(label: string): [number, number] {
-		const m = label.match(/\((\d{4})[–\-](\d{4})?/);
-		if (!m) return [fromYear, toYear];
-		return [+m[1], m[2] ? +m[2] : toYear];
-	}
-
 	function toggleParty(p: string) {
 		filters.parties = filters.parties.includes(p)
 			? filters.parties.filter((x) => x !== p)
 			: [...filters.parties, p];
-	}
-
-	function toggleTerm(t: number) {
-		const newTerms = filters.terms.includes(t)
-			? filters.terms.filter((x) => x !== t)
-			: [...filters.terms, t];
-		filters.terms = newTerms;
-		// Sync year range to cover all selected terms
-		if (newTerms.length > 0) {
-			const pairs = meta.terms
-				.filter((tm) => newTerms.includes(tm.term))
-				.map((tm) => termYears(tm.label));
-			yFrom = Math.min(...pairs.map((p) => p[0]));
-			yTo = Math.max(...pairs.map((p) => p[1]));
-		}
-	}
-
-	// Called only on direct user interaction with the year selects
-	function onYearChange() {
-		filters.terms = [];
 	}
 
 	// --- politician typeahead -------------------------------------------------
@@ -129,23 +102,6 @@
 		{#if filters.parties.length === 0}<p class="hint">{i18n.t('all_parties')}</p>{/if}
 	</section>
 
-	<section>
-		<span class="lbl">{i18n.t('terms')}</span>
-		<div class="chips terms">
-			{#each meta.terms as t (t.term)}
-				<button
-					class="chip sm"
-					class:on={filters.terms.includes(t.term)}
-					onclick={() => toggleTerm(t.term)}
-					title={t.label}
-				>
-					{t.term}
-				</button>
-			{/each}
-		</div>
-		{#if filters.terms.length === 0}<p class="hint">{i18n.t('all_terms')}</p>{/if}
-	</section>
-
 	<section class="pol">
 		<label class="lbl" for="pol">{i18n.t('politician')}</label>
 		<div class="pol-input">
@@ -178,11 +134,11 @@
 	<section>
 		<span class="lbl">{i18n.t('period')}</span>
 		<div class="range">
-			<select bind:value={yFrom} onchange={onYearChange}>
+			<select bind:value={yFrom}>
 				{#each years.filter((y) => y <= yTo) as y (y)}<option value={y}>{y}</option>{/each}
 			</select>
 			<span class="dash">–</span>
-			<select bind:value={yTo} onchange={onYearChange}>
+			<select bind:value={yTo}>
 				{#each years.filter((y) => y >= yFrom) as y (y)}<option value={y}>{y}</option>{/each}
 			</select>
 		</div>
@@ -307,15 +263,6 @@
 		border-color: var(--c, var(--accent));
 		background: color-mix(in srgb, var(--c, var(--accent)) 12%, var(--card));
 		color: var(--ink);
-	}
-	.chip.sm {
-		padding: 0.28rem 0.5rem;
-		min-width: 2rem;
-		justify-content: center;
-	}
-	.chip.sm.on {
-		border-color: var(--accent);
-		background: color-mix(in srgb, var(--accent) 14%, var(--card));
 	}
 	.dot {
 		width: 8px;
