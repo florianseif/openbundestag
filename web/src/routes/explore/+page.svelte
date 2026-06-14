@@ -262,20 +262,22 @@
 		<div class="filter-bar glass">
 			<!-- Search hero — large and central -->
 			<div class="search-hero">
-				<div class="search-input-wrap">
-					<svg class="search-icon" width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-						<circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
-						<line x1="10" y1="10" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-					</svg>
-					<input
-						id="kw"
-						class="search-input"
-						bind:value={filters.word}
-						maxlength={meta.keyword_max_len}
-						placeholder={i18n.t('keyword_ph')}
-						autocomplete="off"
-					/>
-					{#if loading}<span class="pulse"></span>{/if}
+				<div class="search-aurora-ring" class:has-word={filters.word.trim().length > 0}>
+					<div class="search-input-wrap">
+						<svg class="search-icon" width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+							<circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+							<line x1="10" y1="10" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+						</svg>
+						<input
+							id="kw"
+							class="search-input"
+							bind:value={filters.word}
+							maxlength={meta.keyword_max_len}
+							placeholder={i18n.t('keyword_ph')}
+							autocomplete="off"
+						/>
+						{#if loading}<span class="pulse"></span>{/if}
+					</div>
 				</div>
 				<button class="reset-btn" onclick={reset}>{i18n.t('reset')}</button>
 			</div>
@@ -344,12 +346,6 @@
 					<p>{i18n.t('no_results', { word: filters.word })}</p>
 				</div>
 			{:else}
-				<!-- Headline -->
-				<div class="headline">
-					<span class="eyebrow">{i18n.t('overview')}</span>
-					<h1 class="kw grad-text">„{filters.word}"</h1>
-				</div>
-
 				<!-- Metric strip -->
 				<div class="metrics">
 					<div class="metric glass">
@@ -559,27 +555,71 @@
 		align-items: center;
 		gap: 0.75rem;
 	}
-	.search-input-wrap {
+
+	/* Aurora gradient ring around the search field */
+	.search-aurora-ring {
 		flex: 1;
+		position: relative;
+		border-radius: 14px;
+		padding: 2px;
+		background: var(--line-2);
+		transition: background 0.35s;
+	}
+	.search-aurora-ring::before {
+		content: '';
+		position: absolute;
+		inset: -1px;
+		border-radius: 15px;
+		background: var(--grad);
+		opacity: 0;
+		transition: opacity 0.35s;
+		z-index: 0;
+	}
+	.search-aurora-ring::after {
+		content: '';
+		position: absolute;
+		inset: -3px;
+		border-radius: 17px;
+		background: var(--grad);
+		opacity: 0;
+		filter: blur(10px);
+		transition: opacity 0.45s;
+		z-index: 0;
+		animation: aurora-spin 4s linear infinite;
+	}
+	.search-aurora-ring:focus-within::before,
+	.search-aurora-ring.has-word::before { opacity: 1; }
+	.search-aurora-ring:focus-within::after { opacity: 0.45; }
+	.search-aurora-ring.has-word:focus-within::after { opacity: 0.6; }
+
+	@keyframes aurora-spin {
+		from { filter: blur(10px) hue-rotate(0deg); }
+		to   { filter: blur(10px) hue-rotate(360deg); }
+	}
+
+	.search-input-wrap {
+		position: relative;
+		z-index: 1;
 		display: flex;
 		align-items: center;
-		gap: 0.7rem;
-		background: var(--surface-2);
-		border: 1px solid var(--line-2);
-		border-radius: var(--radius-sm);
-		padding: 0.75rem 1.1rem;
-		transition: border-color 0.2s, box-shadow 0.2s;
+		gap: 0.8rem;
+		background: var(--bg);
+		border-radius: 12px;
+		padding: 0.9rem 1.2rem;
 	}
-	.search-input-wrap:focus-within {
-		border-color: var(--accent);
-		box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+	.search-icon {
+		color: var(--ink-3);
+		flex-shrink: 0;
+		transition: color 0.25s;
 	}
-	.search-icon { color: var(--ink-3); flex-shrink: 0; }
+	.search-aurora-ring:focus-within .search-icon,
+	.search-aurora-ring.has-word .search-icon { color: var(--accent); }
 	.search-input {
 		flex: 1;
 		font: inherit;
-		font-size: 1.2rem;
+		font-size: 1.35rem;
 		font-weight: 500;
+		letter-spacing: -0.01em;
 		background: none;
 		border: none;
 		outline: none;
@@ -804,19 +844,6 @@
 		flex-direction: column;
 		gap: 1.4rem;
 		min-width: 0;
-	}
-
-	.headline {
-		display: flex;
-		align-items: baseline;
-		gap: 1rem;
-		flex-wrap: wrap;
-	}
-	.headline .eyebrow { order: -1; width: 100%; margin-bottom: -0.4rem; }
-	.kw {
-		font-size: clamp(2.4rem, 5vw, 3.6rem);
-		margin: 0;
-		line-height: 1;
 	}
 
 	.metrics {
