@@ -28,6 +28,7 @@
 	let typeFilter = $state<ZwischenrufType | ''>('Zwischenruf');
 	let termFilter = $state<number | undefined>(undefined);
 	let matrixTab = $state<'matrix' | 'top'>('matrix');
+	let showHistorical = $state(false);
 
 	const TYPES: Array<{ value: ZwischenrufType | ''; labelKey: string }> = [
 		{ value: '', labelKey: 'zw_type_zwischenruf' },
@@ -116,8 +117,30 @@
 		)
 	);
 
+	const historicalSet = $derived(new Set(meta?.historical_parties ?? []));
+
+	const visibleTopCallers = $derived(
+		showHistorical
+			? topCallers
+			: topCallers.filter((c) => !historicalSet.has(c.caller_party))
+	);
+
+	const visibleByParty = $derived(
+		showHistorical
+			? byParty
+			: byParty.filter((p) => !historicalSet.has(p.caller_party))
+	);
+
+	const visibleMatrix = $derived(
+		showHistorical
+			? matrix
+			: matrix.filter(
+					(r) => !historicalSet.has(r.caller_party) && !historicalSet.has(r.target_speaker_party)
+			  )
+	);
+
 	const callerBars = $derived(
-		topCallers.map((c) => ({
+		visibleTopCallers.map((c) => ({
 			label: c.caller_name,
 			sub: c.caller_party,
 			value: c.n,
@@ -126,7 +149,7 @@
 	);
 
 	const partyBars = $derived(
-		byParty.map((p) => ({
+		visibleByParty.map((p) => ({
 			label: p.caller_party,
 			value: p.n,
 			color: partyColor(p.caller_party)
@@ -139,7 +162,7 @@
 	const topTarget = $derived(
 		(() => {
 			const totals = new Map<string, number>();
-			for (const r of matrix) {
+			for (const r of visibleMatrix) {
 				totals.set(r.target_speaker_party, (totals.get(r.target_speaker_party) ?? 0) + r.n);
 			}
 			let best = { party: '', n: 0 };
@@ -305,6 +328,10 @@
 					{/each}
 				</select>
 			</label>
+			<label class="filter-group filter-toggle">
+				<input type="checkbox" bind:checked={showHistorical} />
+				<span class="filter-label">{i18n.t('incl_historical')}</span>
+			</label>
 		</div>
 
 		<!-- ── Timeline SVG ───────────────────────────────────────────────── -->
@@ -395,8 +422,8 @@
 							<p class="p-hint">{i18n.t('zw_matrix_hint')}</p>
 						</div>
 					</header>
-					{#if matrix.length}
-						<InterruptionMatrix rows={matrix} />
+					{#if visibleMatrix.length}
+						<InterruptionMatrix rows={visibleMatrix} />
 					{:else}
 						<p class="empty">—</p>
 					{/if}
@@ -581,6 +608,8 @@
 		transition: border-color 0.2s;
 	}
 	.sel:focus { border-color: var(--accent); }
+	.filter-toggle { cursor: pointer; gap: 0.45rem; }
+	.filter-toggle input[type='checkbox'] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
 
 	/* ── Timeline ── */
 	.svg-wrap { width: 100%; }

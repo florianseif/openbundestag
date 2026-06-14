@@ -5,6 +5,10 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
+from src.queries import PARTY_FULL_NAMES
+
+_KNOWN_PARTIES: list[str] = list(PARTY_FULL_NAMES.keys())
+
 # ---------------------------------------------------------------------------
 # Canonical faction normalisation (single source of truth)
 # ---------------------------------------------------------------------------
@@ -225,11 +229,18 @@ def load_zwischenrufe(
         offset = int(max_id_row[0]) + 1  # type: ignore[index]
 
         df_to_insert = df.copy()
-        df_to_insert.insert(0, "id", range(offset, offset + len(df)))
+        # Drop rows whose caller_party is not a recognised party (e.g. city names
+        # from legacy terms where only constituency info was present in the text).
+        if "caller_party" in df_to_insert.columns:
+            df_to_insert = df_to_insert[df_to_insert["caller_party"].isin(_KNOWN_PARTIES)]
+        df_to_insert = df_to_insert.reset_index(drop=True)
+        df_to_insert.insert(0, "id", range(offset, offset + len(df_to_insert)))
 
         conn.execute("INSERT INTO zwischenrufe SELECT * FROM df_to_insert")
+        skipped = len(df) - len(df_to_insert)
         print(
-            f"[load] Inserted {len(df_to_insert):,} zwischenrufe for term {electoral_term}",
+            f"[load] Inserted {len(df_to_insert):,} zwischenrufe for term {electoral_term}"
+            + (f" ({skipped:,} skipped — unknown caller_party)" if skipped else ""),
             flush=True,
         )
 
