@@ -80,7 +80,7 @@
 	<div class="wrap">
 		<h2>{i18n.t('cta_try')}</h2>
 		<p class="lede">{i18n.t('hero_sub')}</p>
-		<a class="btn" href="/explore">{i18n.t('cta_explore')} →</a>
+		<a class="btn" href="/explore">{i18n.t('nav_wortsuche')} →</a>
 	</div>
 </section>
 

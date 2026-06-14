@@ -5,7 +5,7 @@
 	import { i18n } from '$lib/i18n.svelte';
 
 	let { children } = $props();
-	const onExplore = $derived(page.url.pathname.startsWith('/explore'));
+	const onWortsuche = $derived(page.url.pathname.startsWith('/explore'));
 	const onZwischenrufe = $derived(page.url.pathname.startsWith('/zwischenrufe'));
 	const onAbout = $derived(page.url.pathname.startsWith('/about'));
 </script>
@@ -34,14 +34,15 @@
 		</a>
 
 		<nav>
-			{#if !onExplore}
-				<a class="nav-cta" href="/explore">
-					{i18n.t('cta_explore')}
-					<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-						<path d="M2.5 10.5l8-8M5 2.5h5.5V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-					</svg>
-				</a>
-			{/if}
+			<a
+				class="nav-pill"
+				class:active={onWortsuche}
+				href="/explore"
+				style="--pill-color: var(--accent)"
+			>
+				<span class="pill-dot" aria-hidden="true"></span>
+				{i18n.t('nav_wortsuche')}
+			</a>
 
 			<a
 				class="nav-pill"
@@ -151,39 +152,7 @@
 		gap: 0.6rem;
 	}
 
-	/* Primary CTA — gradient-bordered glowing button */
-	.nav-cta {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		font-family: var(--display);
-		font-size: 0.88rem;
-		font-weight: 700;
-		letter-spacing: -0.01em;
-		color: var(--ink);
-		text-decoration: none;
-		padding: 0.42rem 1rem;
-		border-radius: 999px;
-		/* gradient border via background-clip trick */
-		background:
-			linear-gradient(var(--surface), var(--surface)) padding-box,
-			var(--grad) border-box;
-		border: 1.5px solid transparent;
-		transition: transform 0.22s var(--spring), box-shadow 0.22s, color 0.18s;
-	}
-	.nav-cta:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 6px 24px -4px rgba(107, 145, 255, 0.45);
-		color: var(--ink);
-	}
-	.nav-cta svg {
-		transition: transform 0.2s;
-	}
-	.nav-cta:hover svg {
-		transform: translate(2px, -2px);
-	}
-
-	/* Secondary pills — glass with per-link accent */
+	/* Nav pills — glass with per-link accent */
 	.nav-pill {
 		display: inline-flex;
 		align-items: center;
@@ -261,7 +230,6 @@
 	@media (max-width: 640px) {
 		.tag { display: none; }
 		nav { gap: 0.4rem; }
-		.nav-cta { padding: 0.38rem 0.8rem; font-size: 0.82rem; }
 		.nav-pill { padding: 0.38rem 0.75rem; font-size: 0.82rem; }
 	}
 	@media (max-width: 420px) {
