@@ -7,11 +7,11 @@
 	let {
 		initialParty = undefined,
 		initialTarget = undefined,
-		termFilter = undefined
+		terms = undefined
 	}: {
 		initialParty?: string;
 		initialTarget?: string;
-		termFilter?: number;
+		terms?: number[];
 	} = $props();
 
 	let keyword = $state('');
@@ -28,7 +28,7 @@
 				keyword: keyword || undefined,
 				callerParty: callerParty || undefined,
 				targetParty: targetParty || undefined,
-				termFilter,
+				terms,
 				limit: 60
 			});
 		} finally {
@@ -37,7 +37,7 @@
 	}
 
 	$effect(() => {
-		void keyword; void callerParty; void targetParty; void termFilter;
+		void keyword; void callerParty; void targetParty; void terms;
 		clearTimeout(debounce);
 		debounce = setTimeout(load, 300);
 	});

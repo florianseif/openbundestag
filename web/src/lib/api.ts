@@ -116,38 +116,38 @@ export const api = {
 		timeline: (
 			typeFilter?: string,
 			partyFilter?: string,
-			termFilter?: number,
+			terms?: number[],
 			fetcher?: FetchLike
 		) => {
 			const p = new URLSearchParams();
 			if (typeFilter) p.set('type_filter', typeFilter);
 			if (partyFilter) p.set('party_filter', partyFilter);
-			if (termFilter) p.set('term_filter', String(termFilter));
+			for (const t of terms ?? []) p.append('terms', String(t));
 			return get<ZwischenrufTimelinePoint[]>(`/api/zwischenrufe/timeline?${p}`, fetcher);
 		},
 
 		topCallers: (
 			typeFilter = 'Zwischenruf',
-			termFilter?: number,
+			terms?: number[],
 			partyFilter?: string,
 			limit = 20,
 			fetcher?: FetchLike
 		) => {
 			const p = new URLSearchParams({ type_filter: typeFilter, limit: String(limit) });
-			if (termFilter) p.set('term_filter', String(termFilter));
+			for (const t of terms ?? []) p.append('terms', String(t));
 			if (partyFilter) p.set('party_filter', partyFilter);
 			return get<ZwischenrufCallerCount[]>(`/api/zwischenrufe/top-callers?${p}`, fetcher);
 		},
 
-		byParty: (typeFilter = 'Zwischenruf', termFilter?: number, fetcher?: FetchLike) => {
+		byParty: (typeFilter = 'Zwischenruf', terms?: number[], fetcher?: FetchLike) => {
 			const p = new URLSearchParams({ type_filter: typeFilter });
-			if (termFilter) p.set('term_filter', String(termFilter));
+			for (const t of terms ?? []) p.append('terms', String(t));
 			return get<ZwischenrufPartyCount[]>(`/api/zwischenrufe/by-party?${p}`, fetcher);
 		},
 
-		matrix: (typeFilter = 'Zwischenruf', termFilter?: number, fetcher?: FetchLike) => {
+		matrix: (typeFilter = 'Zwischenruf', terms?: number[], fetcher?: FetchLike) => {
 			const p = new URLSearchParams({ type_filter: typeFilter });
-			if (termFilter) p.set('term_filter', String(termFilter));
+			for (const t of terms ?? []) p.append('terms', String(t));
 			return get<ZwischenrufMatrixRow[]>(`/api/zwischenrufe/matrix?${p}`, fetcher);
 		},
 
@@ -157,7 +157,7 @@ export const api = {
 				callerParty?: string;
 				callerName?: string;
 				targetParty?: string;
-				termFilter?: number;
+				terms?: number[];
 				limit?: number;
 			} = {},
 			fetcher?: FetchLike
@@ -167,7 +167,7 @@ export const api = {
 			if (opts.callerParty) p.set('caller_party', opts.callerParty);
 			if (opts.callerName) p.set('caller_name', opts.callerName);
 			if (opts.targetParty) p.set('target_party', opts.targetParty);
-			if (opts.termFilter) p.set('term_filter', String(opts.termFilter));
+			for (const t of opts.terms ?? []) p.append('terms', String(t));
 			if (opts.limit) p.set('limit', String(opts.limit));
 			return get<ZwischenrufSample[]>(`/api/zwischenrufe/samples?${p}`, fetcher);
 		}

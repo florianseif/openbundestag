@@ -500,7 +500,7 @@ def query_zwischenrufe_timeline(
     con: duckdb.DuckDBPyConnection,
     type_filter: str | None = None,
     party_filter: str | None = None,
-    term_filter: int | None = None,
+    terms: list[int] | None = None,
 ) -> pd.DataFrame:
     """Zwischenrufe count by year, optionally filtered by type/caller party/term.
 
@@ -514,9 +514,9 @@ def query_zwischenrufe_timeline(
     if party_filter:
         conditions.append("caller_party = ?")
         params.append(party_filter)
-    if term_filter:
-        conditions.append("electoral_term = ?")
-        params.append(term_filter)
+    if terms:
+        conditions.append(f"electoral_term IN ({','.join('?' * len(terms))})")
+        params.extend(terms)
 
     where = " AND ".join(conditions)
     return con.execute(
@@ -537,7 +537,7 @@ def query_zwischenrufe_timeline(
 def query_top_zwischenrufer(
     con: duckdb.DuckDBPyConnection,
     type_filter: str = "Zwischenruf",
-    term_filter: int | None = None,
+    terms: list[int] | None = None,
     party_filter: str | None = None,
     limit: int = 20,
 ) -> pd.DataFrame:
@@ -547,9 +547,9 @@ def query_top_zwischenrufer(
     """
     conditions = ["caller_name IS NOT NULL", "type = ?"]
     params: list = [type_filter]
-    if term_filter:
-        conditions.append("electoral_term = ?")
-        params.append(term_filter)
+    if terms:
+        conditions.append(f"electoral_term IN ({','.join('?' * len(terms))})")
+        params.extend(terms)
     if party_filter:
         conditions.append("caller_party = ?")
         params.append(party_filter)
@@ -572,7 +572,7 @@ def query_top_zwischenrufer(
 def query_zwischenrufe_by_caller_party(
     con: duckdb.DuckDBPyConnection,
     type_filter: str = "Zwischenruf",
-    term_filter: int | None = None,
+    terms: list[int] | None = None,
 ) -> pd.DataFrame:
     """Total interjections grouped by caller party.
 
@@ -580,9 +580,9 @@ def query_zwischenrufe_by_caller_party(
     """
     conditions = ["caller_party IS NOT NULL", "type = ?"]
     params: list = [type_filter]
-    if term_filter:
-        conditions.append("electoral_term = ?")
-        params.append(term_filter)
+    if terms:
+        conditions.append(f"electoral_term IN ({','.join('?' * len(terms))})")
+        params.extend(terms)
 
     where = " AND ".join(conditions)
     return con.execute(
@@ -600,7 +600,7 @@ def query_zwischenrufe_by_caller_party(
 def query_interruption_matrix(
     con: duckdb.DuckDBPyConnection,
     type_filter: str = "Zwischenruf",
-    term_filter: int | None = None,
+    terms: list[int] | None = None,
 ) -> pd.DataFrame:
     """Cross-party interruption matrix: who heckles whom.
 
@@ -616,9 +616,9 @@ def query_interruption_matrix(
         "type = ?",
     ]
     params: list = [type_filter]
-    if term_filter:
-        conditions.append("electoral_term = ?")
-        params.append(term_filter)
+    if terms:
+        conditions.append(f"electoral_term IN ({','.join('?' * len(terms))})")
+        params.extend(terms)
 
     where = " AND ".join(conditions)
     return con.execute(
@@ -639,7 +639,7 @@ def query_zwischenrufe_samples(
     caller_party: str | None = None,
     caller_name: str | None = None,
     target_party: str | None = None,
-    term_filter: int | None = None,
+    terms: list[int] | None = None,
     limit: int = 50,
 ) -> pd.DataFrame:
     """Retrieve individual Zwischenruf rows for browsing.
@@ -660,9 +660,9 @@ def query_zwischenrufe_samples(
     if target_party:
         conditions.append("target_speaker_party = ?")
         params.append(target_party)
-    if term_filter:
-        conditions.append("electoral_term = ?")
-        params.append(term_filter)
+    if terms:
+        conditions.append(f"electoral_term IN ({','.join('?' * len(terms))})")
+        params.extend(terms)
     params.append(limit)
 
     where = " AND ".join(conditions)

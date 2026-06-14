@@ -1,6 +1,4 @@
 <script lang="ts">
-	import LangToggle from '$lib/components/LangToggle.svelte';
-
 	interface Stat {
 		value: string | number;
 		label: string;
@@ -20,7 +18,6 @@
 			<h1 class="grad-text">{title}</h1>
 			<p class="hero-sub">{subtitle}</p>
 		</div>
-		<LangToggle />
 	</div>
 
 	{#if stats.length}

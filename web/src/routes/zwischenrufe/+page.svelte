@@ -7,16 +7,19 @@
 	import PageHero from '$lib/components/PageHero.svelte';
 	import InterruptionMatrix from '$lib/components/InterruptionMatrix.svelte';
 	import ZwischenrufFeed from '$lib/components/ZwischenrufFeed.svelte';
+	import TermFilter from '$lib/components/TermFilter.svelte';
 	import type {
 		ZwischenrufMeta,
 		ZwischenrufCallerCount,
 		ZwischenrufPartyCount,
 		ZwischenrufMatrixRow,
-		ZwischenrufType
+		ZwischenrufType,
+		TermInfo
 	} from '$lib/types';
 
 	// ── state ─────────────────────────────────────────────────────────────────
 	let meta = $state<ZwischenrufMeta | null>(null);
+	let termOptions = $state<TermInfo[]>([]);
 	let topCallers = $state<ZwischenrufCallerCount[]>([]);
 	let byParty = $state<ZwischenrufPartyCount[]>([]);
 	let matrix = $state<ZwischenrufMatrixRow[]>([]);
@@ -24,7 +27,7 @@
 	let bootError = $state<string | null>(null);
 
 	let typeFilter = $state<ZwischenrufType | ''>('Zwischenruf');
-	let termFilter = $state<number | undefined>(undefined);
+	let terms = $state<number[]>([]);
 	let activeView = $state<'matrix' | 'parties' | 'callers' | 'feed'>('matrix');
 
 	// ── boot ──────────────────────────────────────────────────────────────────
@@ -42,17 +45,19 @@
 			loading = false;
 			return;
 		}
+		// Electoral-term list (with labels) for the Wahlperiode filter bar.
+		api.meta().then((m) => (termOptions = m.terms)).catch(() => {});
 		await reload();
 		loading = false;
 	}
 
 	async function reload() {
 		const tf = typeFilter || 'Zwischenruf';
-		const term = termFilter;
+		const t = terms;
 		const [tc, bp, mx] = await Promise.allSettled([
-			api.zwischenrufe.topCallers(tf, term, undefined, 20),
-			api.zwischenrufe.byParty(tf, term),
-			api.zwischenrufe.matrix(tf, term)
+			api.zwischenrufe.topCallers(tf, t, undefined, 20),
+			api.zwischenrufe.byParty(tf, t),
+			api.zwischenrufe.matrix(tf, t)
 		]);
 		if (tc.status === 'fulfilled') topCallers = tc.value;
 		if (bp.status === 'fulfilled') byParty = bp.value;
@@ -65,7 +70,7 @@
 
 	let debounce: ReturnType<typeof setTimeout>;
 	$effect(() => {
-		void typeFilter; void termFilter;
+		void typeFilter; void terms;
 		if (!meta?.available) return;
 		clearTimeout(debounce);
 		debounce = setTimeout(reload, 200);
@@ -193,22 +198,11 @@
 					<option value="Zuruf">{i18n.t('zw_type_zuruf')}</option>
 				</select>
 			</label>
-			<label class="filter-group">
-				<span class="filter-label">{i18n.t('terms')}</span>
-				<select
-					bind:value={termFilter}
-					class="sel"
-					onchange={(e) => {
-						const v = (e.target as HTMLSelectElement).value;
-						termFilter = v ? Number(v) : undefined;
-					}}
-				>
-					<option value="">{i18n.t('all_terms')}</option>
-					{#each Array.from({ length: 21 }, (_, i) => 21 - i) as t}
-						<option value={t}>Wahlperiode {t}</option>
-					{/each}
-				</select>
-			</label>
+			{#if termOptions.length}
+				<div class="filter-terms">
+					<TermFilter bind:selected={terms} options={termOptions} />
+				</div>
+			{/if}
 		</div>
 
 		<!-- ── Adventure tabs ────────────────────────────────────────────── -->
@@ -347,7 +341,7 @@
 				<header class="p-head">
 					<h3>{i18n.t('zw_feed_title')}</h3>
 				</header>
-				<ZwischenrufFeed termFilter={termFilter} />
+				<ZwischenrufFeed {terms} />
 			</section>
 		{/if}
 	{/if}
@@ -449,15 +443,21 @@
 	/* ── Filter bar ── */
 	.filter-bar {
 		display: flex;
-		gap: 1.2rem;
+		gap: 1.1rem;
 		flex-wrap: wrap;
-		padding: 0.85rem 1.2rem;
+		padding: 0.95rem 1.2rem;
 		align-items: center;
 	}
 	.filter-group {
 		display: flex;
 		align-items: center;
 		gap: 0.55rem;
+	}
+	/* The Wahlperiode chip bar takes its own full-width row below the type select */
+	.filter-terms {
+		flex: 1 1 100%;
+		padding-top: 0.85rem;
+		border-top: 1px solid var(--line);
 	}
 	.filter-label {
 		font-size: 0.78rem;
