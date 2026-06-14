@@ -1024,9 +1024,13 @@ const partyBars = $derived(
 	}
 	.party-body {
 		display: grid;
-		grid-template-columns: 200px 1fr;
+		grid-template-columns: 1fr;
 		gap: 1.5rem;
-		align-items: center;
+		align-items: start;
+	}
+	.party-body > :first-child {
+		justify-self: center;
+		max-width: 200px;
 	}
 
 	.empty, .err { color: var(--ink-3); padding: 2rem 0; text-align: center; }
@@ -1041,7 +1045,6 @@ const partyBars = $derived(
 	/* ── Responsive ────────────────────────────────────────────────────── */
 	@media (max-width: 860px) {
 		.grid-2 { grid-template-columns: 1fr; }
-		.party-body { grid-template-columns: 1fr; }
 		.p-head { flex-direction: column; }
 		.pol-picker { width: 100%; max-width: none; }
 		.pol-input-wrap { max-width: none; }
