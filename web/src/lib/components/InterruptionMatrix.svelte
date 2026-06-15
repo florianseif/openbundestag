@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { partyColor, partyFoundingOrder } from '$lib/format';
 	import { formatNumber } from '$lib/format';
-	import type { ZwischenrufMatrixRow } from '$lib/types';
+	import { api } from '$lib/api';
+	import type { ZwischenrufMatrixRow, ZwischenrufSample } from '$lib/types';
 
-	let { rows }: { rows: ZwischenrufMatrixRow[] } = $props();
+	let { rows, showSamples = false }: { rows: ZwischenrufMatrixRow[]; showSamples?: boolean } = $props();
 
 	// Derive ordered party lists from data
 	const callers = $derived(
@@ -51,6 +52,23 @@
 	}
 
 	let hoveredCell = $state<{ caller: string; target: string; n: number } | null>(null);
+	let samples = $state<ZwischenrufSample[]>([]);
+	let samplesLoading = $state(false);
+	let samplesDebounce: ReturnType<typeof setTimeout>;
+
+	function fetchSamples(caller: string, target: string) {
+		if (!showSamples) return;
+		clearTimeout(samplesDebounce);
+		samples = [];
+		samplesDebounce = setTimeout(async () => {
+			samplesLoading = true;
+			try {
+				samples = await api.zwischenrufe.samples({ callerParty: caller, targetParty: target, limit: 5 });
+			} finally {
+				samplesLoading = false;
+			}
+		}, 180);
+	}
 </script>
 
 <div class="matrix-wrap">
@@ -89,8 +107,11 @@
 					class:active={n > 0}
 					style:--alpha={alpha}
 					style:--cc={partyColor(caller)}
-					onmouseenter={() => (hoveredCell = n > 0 ? { caller, target, n } : null)}
-					onmouseleave={() => (hoveredCell = null)}
+					onmouseenter={() => {
+						hoveredCell = n > 0 ? { caller, target, n } : null;
+						if (n > 0) fetchSamples(caller, target);
+					}}
+					onmouseleave={() => { hoveredCell = null; clearTimeout(samplesDebounce); }}
 				>
 					{#if n > 0}
 						<span class="n">{formatNumber(n, 'de')}</span>
@@ -100,17 +121,31 @@
 		{/each}
 	</div>
 
-	<!-- Hover tooltip -->
+	<!-- Hover panel -->
 	{#if hoveredCell}
-		<div class="tooltip">
-			<span class="tt-from" style:color={partyColor(hoveredCell.caller)}
-				>{hoveredCell.caller}</span
-			>
-			<span class="tt-arrow">→</span>
-			<span class="tt-to" style:color={partyColor(hoveredCell.target)}
-				>{hoveredCell.target}</span
-			>
-			<strong class="tt-n">{formatNumber(hoveredCell.n, 'de')}</strong>
+		<div class="tooltip" class:has-samples={showSamples}>
+			<div class="tt-header">
+				<span class="tt-from" style:color={partyColor(hoveredCell.caller)}>{hoveredCell.caller}</span>
+				<span class="tt-arrow">→</span>
+				<span class="tt-to" style:color={partyColor(hoveredCell.target)}>{hoveredCell.target}</span>
+				<strong class="tt-n">{formatNumber(hoveredCell.n, 'de')} Zwischenrufe</strong>
+			</div>
+			{#if showSamples}
+				<div class="tt-samples">
+					{#if samplesLoading}
+						<span class="tt-loading">…</span>
+					{:else if samples.length}
+						{#each samples as s}
+							<div class="tt-sample">
+								<span class="tt-caller" style:color={partyColor(s.caller_party ?? '')}>
+									{s.caller_name ?? s.caller_party}
+								</span>
+								<span class="tt-quote">„{s.text}"</span>
+							</div>
+						{/each}
+					{/if}
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -219,15 +254,25 @@
 		position: sticky;
 		bottom: 0;
 		left: 0;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+		padding: 0.6rem 1rem;
 		background: var(--surface-2);
 		border: 1px solid var(--line-2);
-		border-radius: 999px;
+		border-radius: 12px;
 		font-size: 0.82rem;
 		margin-top: 0.6rem;
+	}
+	.tooltip:not(.has-samples) {
+		border-radius: 999px;
+		flex-direction: row;
+		align-items: center;
+	}
+	.tt-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 	.tt-arrow {
 		color: var(--ink-3);
@@ -236,5 +281,32 @@
 		margin-left: 0.3rem;
 		font-variant-numeric: tabular-nums;
 		color: var(--ink);
+	}
+	.tt-samples {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		border-top: 1px solid var(--line-2);
+		padding-top: 0.5rem;
+	}
+	.tt-loading {
+		color: var(--ink-3);
+		font-size: 0.78rem;
+	}
+	.tt-sample {
+		display: flex;
+		gap: 0.5rem;
+		align-items: baseline;
+		font-size: 0.78rem;
+		line-height: 1.4;
+	}
+	.tt-caller {
+		font-weight: 600;
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+	.tt-quote {
+		color: var(--ink-2);
+		font-style: italic;
 	}
 </style>
