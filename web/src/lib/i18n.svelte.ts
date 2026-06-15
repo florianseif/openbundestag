@@ -128,8 +128,8 @@ export const STRINGS: Dict = {
 		en: 'Who heckles whom in the German Bundestag?'
 	},
 	zw_explainer: {
-		de: 'Zwischenrufe sind spontane Reaktionen aus dem Plenum während einer Rede — von lautem Protest und Gelächter bis zu zustimmendem „Hört! Hört!" und „Sehr richtig!". Sie sind also nicht immer feindlich. Hover über eine Heatmap-Kachel, um konkrete Beispiele zu lesen.',
-		en: 'Interjections are spontaneous reactions from the floor during a speech — from loud protest and laughter to approving "Hear! Hear!" and "Quite right!". They are not always hostile. Hover over a heatmap cell to read real examples.'
+		de: 'Spontane Reaktionen aus dem Plenum während einer Rede — von lautem Protest und Gelächter bis zu zustimmendem „Hört! Hört!" und „Sehr richtig!". Nicht immer feindlich.',
+		en: 'Spontaneous reactions from the floor during a speech — from loud protest and laughter to approving "Hear! Hear!" and "Quite right!". Not always hostile.'
 	},
 	zw_total: { de: 'Reaktionen gesamt', en: 'Total reactions' },
 	zw_top_caller: { de: 'Aktivste/r Zwischenrufer/in', en: 'Most active heckler' },
@@ -137,8 +137,8 @@ export const STRINGS: Dict = {
 	zw_most_interrupted: { de: 'Wurde meist unterbrochen', en: 'Was most interrupted' },
 	zw_matrix_title: { de: 'Wer ruft wem dazwischen?', en: 'Who heckles whom?' },
 	zw_matrix_hint: {
-		de: 'Zeilen = Rufende Partei · Spalten = Unterbrochene Partei',
-		en: 'Rows = calling party · Columns = interrupted party'
+		de: 'Zeilen = Rufende Partei · Spalten = Unterbrochene Partei · Hover für Beispiele',
+		en: 'Rows = calling party · Columns = interrupted party · Hover for examples'
 	},
 	zw_top_title: { de: 'Top Zwischenrufer/innen', en: 'Top hecklers' },
 	zw_feed_title: { de: 'Einzelne Zwischenrufe', en: 'Individual interjections' },
