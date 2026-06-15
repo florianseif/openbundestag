@@ -1,0 +1,65 @@
+[
+  {
+    "electoral_term": 12,
+    "last_name": "Bläss",
+    "first_name": "Petra",
+    "politician_id": 11000189,
+    "note": "Stammdaten: Bläss-Rafajlovski — hyphenated surname not matched by registry lookup"
+  },
+  {
+    "electoral_term": 13,
+    "last_name": "Bläss",
+    "first_name": "Petra",
+    "politician_id": 11000189,
+    "note": "Stammdaten: Bläss-Rafajlovski — hyphenated surname not matched by registry lookup"
+  },
+  {
+    "electoral_term": 14,
+    "last_name": "Bläss",
+    "first_name": "Petra",
+    "politician_id": 11000189,
+    "note": "Stammdaten: Bläss-Rafajlovski — hyphenated surname not matched by registry lookup"
+  },
+  {
+    "electoral_term": 2,
+    "last_name": "Gerstenmaler",
+    "first_name": "D. Dr.",
+    "politician_id": 11000669,
+    "note": "OCR typo in XML: Gerstenmaler → Gerstenmaier, Eugen (Bundestagspräsident)"
+  },
+  {
+    "electoral_term": 5,
+    "last_name": "Brandt",
+    "first_name": "",
+    "politician_id": 11000246,
+    "note": "Willy Brandt (SPD) — term 5 absent from Stammdaten (gap); Brandt was SPD leader and MdB in term 5 (1965–69)"
+  },
+  {
+    "electoral_term": 7,
+    "last_name": "Friderichs",
+    "first_name": "",
+    "politician_id": 11000586,
+    "note": "Hans Friderichs (FDP) — term 7 absent from Stammdaten; he was FDP MdB and later minister in term 7"
+  },
+  {
+    "electoral_term": 7,
+    "last_name": "Gscheidle",
+    "first_name": "",
+    "politician_id": 11000745,
+    "note": "Kurt Gscheidle (SPD) — term 7 absent from Stammdaten; present in terms 4–6 and 8"
+  },
+  {
+    "electoral_term": 5,
+    "last_name": "Lauritzen",
+    "first_name": "",
+    "politician_id": 11001295,
+    "note": "Lauritz Lauritzen (SPD) — term 5 absent from Stammdaten; present in terms 6–8"
+  },
+  {
+    "electoral_term": 12,
+    "last_name": "Rexrodt",
+    "first_name": "Günter",
+    "politician_id": 11002759,
+    "note": "Günter Rexrodt (FDP) — term 12 absent from Stammdaten; present in terms 13–15; was Economics Minister from 1993"
+  }
+]

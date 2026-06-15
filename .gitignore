@@ -13,6 +13,11 @@ out
 open_discourse.db
 openbundestag-data.db
 
+# Pipeline audit logs (generated next to the DB, not source)
+*.unknown_speakers.csv
+*.legacy_unresolved.csv
+*.guests.csv
+
 # Claude Code local harness config
 .claude/
 

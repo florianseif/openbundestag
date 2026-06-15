@@ -11,20 +11,24 @@ registry yields exactly one plausible member for the term.  Ambiguous or
 unmatched speakers keep ``-1`` and are logged to ``legacy_match_unresolved`` for
 review, never guessed.
 
-Matching, per distinct legacy speaker key (term, last_name, first_name,
+Matching order, per distinct legacy speaker key (term, last_name, first_name,
 faction_normalized):
 
+  0. Manual overrides (``data/legacy_overrides.json``) are applied first.
+     Add entries there for known mismatches — compound surnames, Stammdaten
+     gaps, OCR typos — rather than changing the generic logic here.
   1. Candidate set = registry members who sat in that term whose normalized
      surname matches.
   2. If >1 candidate, keep those whose faction matches the speech's party.
   3. If still >1, keep those whose first name (then first initial) matches.
   4. Exactly one survivor → assign.  Otherwise → unresolved.
 
-A broken-parse recovery is attempted first: when the parsed ``last_name`` is
-punctuation/too short (the surname slipped into ``first_name``), the fields are
-swapped before matching.
+A broken-parse recovery is attempted first: when the parsed ``last_name`` starts
+with a non-alpha character (punctuation leaked in), the fields are swapped before
+matching.
 """
 
+import json
 import re
 from pathlib import Path
 
@@ -33,13 +37,35 @@ import pandas as pd
 
 # Nobility particles the legacy parser keeps glued to the surname; the registry
 # stores them separately in PRAEFIX, so strip them for a comparable key.
-_PARTICLES = {"von", "van", "de", "del", "den", "der", "di", "du", "zu", "zur", "zum", "le", "la"}
+_PARTICLES = {
+    "von", "van", "de", "del", "den", "der", "di", "du",
+    "zu", "zur", "zum", "le", "la",
+}
 
 # Title / honorific cruft that leaks into the legacy first_name field.
 _TITLE_CRUFT = re.compile(
     r"^(?:Dr|Prof|D|Frau|Herr|Abg|Ing|Freiherr|Graf|Gräfin|Baron)\b\.?\s*",
     re.IGNORECASE,
 )
+
+_OVERRIDES_PATH = Path(__file__).parent.parent / "data" / "legacy_overrides.json"
+
+
+def _load_overrides() -> dict[tuple, int]:
+    """Load manual overrides from data/legacy_overrides.json.
+
+    Returns a dict keyed by (electoral_term, last_name, first_name) → politician_id.
+    """
+    if not _OVERRIDES_PATH.exists():
+        return {}
+    with open(_OVERRIDES_PATH, encoding="utf-8") as fh:
+        entries = json.load(fh)
+    overrides: dict[tuple, int] = {}
+    for e in entries:
+        key = (int(e["electoral_term"]), e["last_name"], e.get("first_name", ""))
+        overrides[key] = int(e["politician_id"])
+    print(f"[legacy-match] loaded {len(overrides)} manual overrides", flush=True)
+    return overrides
 
 
 def _norm_surname(last: str) -> str:
@@ -60,8 +86,9 @@ def _norm_firstname(first: str) -> str:
 
 
 def _is_broken_surname(last: str) -> bool:
+    """True when the surname field looks like a parse error (non-alpha start)."""
     core = (last or "").strip()
-    return len(core) <= 2 or not re.match(r"^[A-Za-zÄÖÜäöüß]", core)
+    return not core or not re.match(r"^[A-Za-zÄÖÜäöüß]", core)
 
 
 def _build_registry_index(con: duckdb.DuckDBPyConnection) -> dict:
@@ -73,7 +100,6 @@ def _build_registry_index(con: duckdb.DuckDBPyConnection) -> dict:
         "SELECT id, electoral_term, faction FROM politician_terms"
     ).fetchdf()
 
-    # surname + all first-name variants per member
     first_by_id: dict[int, set] = {}
     surnames_by_id: dict[int, set] = {}
     for _, r in names.iterrows():
@@ -150,6 +176,7 @@ def match_legacy(db_path: str | Path) -> None:
                 "Registry tables missing — run the 'stammdaten' phase first."
             )
 
+        overrides = _load_overrides()
         index = _build_registry_index(con)
 
         # Use faction_normalized if finalize has been run, otherwise fall back
@@ -162,7 +189,8 @@ def match_legacy(db_path: str | Path) -> None:
 
         keys = con.execute(
             f"""
-            SELECT electoral_term, last_name, first_name, {faction_col} AS faction_normalized,
+            SELECT electoral_term, last_name, first_name,
+                   {faction_col} AS faction_normalized,
                    COUNT(*) AS speeches
             FROM speeches
             WHERE electoral_term <= 18 AND politician_id = -1
@@ -174,15 +202,34 @@ def match_legacy(db_path: str | Path) -> None:
         rows = []
         for _, k in keys.iterrows():
             last, first = k["last_name"], k["first_name"]
-            if _is_broken_surname(last):  # surname slipped into first_name
+            term = int(k["electoral_term"])
+
+            # Step 0: manual overrides take priority.
+            override_key = (term, last, first)
+            if override_key in overrides:
+                rows.append({
+                    "electoral_term": term,
+                    "last_name": last,
+                    "first_name": first,
+                    "faction_normalized": k["faction_normalized"],
+                    "speeches": int(k["speeches"]),
+                    "matched_id": overrides[override_key],
+                    "reason": "manual-override",
+                })
+                continue
+
+            # Broken-parse recovery: non-alpha surname start means the name
+            # fields were swapped during XML parsing.
+            if _is_broken_surname(last):
                 last, first = first, last
+
             surname = _norm_surname(last)
             fn = _norm_firstname(first)
             mid, reason = _match_one(
-                k["electoral_term"], surname, fn, k["faction_normalized"], index
+                term, surname, fn, k["faction_normalized"], index
             )
             rows.append({
-                "electoral_term": int(k["electoral_term"]),
+                "electoral_term": term,
                 "last_name": k["last_name"],
                 "first_name": k["first_name"],
                 "faction_normalized": k["faction_normalized"],
@@ -197,9 +244,7 @@ def match_legacy(db_path: str | Path) -> None:
 
         # Apply: join on the 4-tuple key, only over still-unresolved legacy rows.
         con.execute("DROP TABLE IF EXISTS _legacy_id_map")
-        con.execute(
-            "CREATE TABLE _legacy_id_map AS SELECT * FROM matched"
-        )
+        con.execute("CREATE TABLE _legacy_id_map AS SELECT * FROM matched")
         con.execute(
             f"""
             UPDATE speeches s
@@ -214,7 +259,7 @@ def match_legacy(db_path: str | Path) -> None:
         )
         con.execute("DROP TABLE _legacy_id_map")
 
-        # Audit: persist the unresolved residue with candidate reason.
+        # Audit: persist the unresolved residue for review.
         unresolved = result[result["matched_id"].isna()].copy()
         con.execute("DROP TABLE IF EXISTS legacy_match_unresolved")
         con.execute(
@@ -239,4 +284,6 @@ def match_legacy(db_path: str | Path) -> None:
             unresolved.sort_values("speeches", ascending=False).to_csv(
                 log_path, index=False
             )
-            print(f"[legacy-match] unresolved residue logged → {log_path}", flush=True)
+            print(
+                f"[legacy-match] unresolved residue → {log_path}", flush=True
+            )
