@@ -742,3 +742,37 @@ def query_zwischenrufe_samples(
         """,
         params,
     ).fetchdf()
+
+
+def query_beifall_self_vs_other(
+    con: duckdb.DuckDBPyConnection,
+    terms: list[int] | None = None,
+) -> pd.DataFrame:
+    """Per-party breakdown of self-applause vs. applause for others.
+
+    Returns: caller_party, is_self (bool), n
+    """
+    conditions = [
+        f"caller_party IN ({KNOWN_PARTIES_SQL})",
+        f"target_speaker_party IN ({KNOWN_PARTIES_SQL})",
+        "type = 'Beifall'",
+    ]
+    params: list = []
+    if terms:
+        conditions.append(f"electoral_term IN ({','.join('?' * len(terms))})")
+        params.extend(terms)
+
+    where = " AND ".join(conditions)
+    return con.execute(
+        f"""
+        SELECT
+            caller_party,
+            (caller_party = target_speaker_party) AS is_self,
+            COUNT(*) AS n
+        FROM zwischenrufe
+        WHERE {where}
+        GROUP BY caller_party, is_self
+        ORDER BY caller_party, is_self
+        """,
+        params,
+    ).fetchdf()

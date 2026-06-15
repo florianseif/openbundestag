@@ -154,6 +154,36 @@ export const STRINGS: Dict = {
 	},
 	zw_no_results: { de: 'Keine Zwischenrufe gefunden.', en: 'No interjections found.' },
 
+	// Beifall explorer
+	nav_beifall: { de: 'Beifall', en: 'Applause' },
+	bf_title: { de: 'Beifall', en: 'Parliamentary Applause' },
+	bf_subtitle: {
+		de: 'Wer beklatscht wen im Deutschen Bundestag?',
+		en: 'Who applauds whom in the German Bundestag?'
+	},
+	bf_total: { de: 'Beifallsmomente gesamt', en: 'Total applause moments' },
+	bf_loudest_party: { de: 'Lauteste Fraktion', en: 'Loudest faction' },
+	bf_most_applauded: { de: 'Meist beklatschte Fraktion', en: 'Most applauded faction' },
+	bf_most_self: { de: 'Höchster Eigenapplaus', en: 'Highest self-applause' },
+	bf_matrix_title: { de: 'Wer beklatscht wen?', en: 'Who applauds whom?' },
+	bf_matrix_hint: {
+		de: 'Zeilen = Applaudierende Fraktion · Spalten = Beklatschte Fraktion',
+		en: 'Rows = applauding faction · Columns = applauded faction'
+	},
+	bf_by_party_title: { de: 'Beifall nach Fraktion', en: 'Applause by faction' },
+	bf_self_vs_other_title: { de: 'Eigenapplaus vs. Fremdapplaus', en: 'Self vs. cross-party applause' },
+	bf_self_vs_other_hint: {
+		de: 'Wie viel Beifall geht an die eigene Fraktion, wie viel an andere?',
+		en: 'How much applause goes to their own faction vs. others?'
+	},
+	bf_self: { de: 'Eigenapplaus', en: 'Self-applause' },
+	bf_other: { de: 'Fremdapplaus', en: 'Cross-party' },
+	bf_applause: { de: 'Beifallsmomente', en: 'applause' },
+	bf_unavailable: {
+		de: 'Beifall noch nicht extrahiert. Führe zuerst --phase zwischenrufe aus.',
+		en: 'Applause not yet extracted. Run --phase zwischenrufe first.'
+	},
+
 	footer_data: { de: 'Datenquelle & Lizenz', en: 'Data source & licence' },
 	footer_body: {
 		de: 'Redebeiträge: offizielle Plenarprotokolle des Deutschen Bundestages (§ 5 Abs. 1 UrhG), © Deutscher Bundestag. Ministerdaten: Wikipedia (CC BY-SA 4.0). Ein unabhängiges Projekt, inspiriert von Open Discourse.',

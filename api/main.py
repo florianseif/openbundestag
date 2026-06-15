@@ -354,3 +354,50 @@ def zwischenrufe_samples(
     return _records(q.query_zwischenrufe_samples(
         c, keyword, caller_party, caller_name, target_party, terms, limit
     ))
+
+
+# ---------------------------------------------------------------------------
+# Beifall endpoints (reuse zwischenrufe table, type='Beifall')
+# ---------------------------------------------------------------------------
+
+@app.get("/api/beifall/meta")
+def beifall_meta() -> dict:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return {"available": False, "total": 0}
+    row = c.execute("SELECT COUNT(*) FROM zwischenrufe WHERE type = 'Beifall'").fetchone()
+    total = int(row[0]) if row else 0  # type: ignore[index]
+    return {"available": total > 0, "total": total}
+
+
+@app.get("/api/beifall/by-party")
+def beifall_by_party(terms: list[int] = Query(default=[])) -> list[dict]:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return []
+    key = ("bf_by_party", tuple(terms))
+    return _cached(key, lambda: _records(
+        q.query_zwischenrufe_by_caller_party(c, "Beifall", terms)
+    ))
+
+
+@app.get("/api/beifall/matrix")
+def beifall_matrix(terms: list[int] = Query(default=[])) -> list[dict]:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return []
+    key = ("bf_matrix", tuple(terms))
+    return _cached(key, lambda: _records(
+        q.query_interruption_matrix(c, "Beifall", terms)
+    ))
+
+
+@app.get("/api/beifall/self-vs-other")
+def beifall_self_vs_other(terms: list[int] = Query(default=[])) -> list[dict]:
+    c = con()
+    if not q.zwischenrufe_table_exists(c):
+        return []
+    key = ("bf_self_vs_other", tuple(terms))
+    return _cached(key, lambda: _records(
+        q.query_beifall_self_vs_other(c, terms)
+    ))

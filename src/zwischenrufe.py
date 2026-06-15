@@ -59,6 +59,42 @@ _WIDERSPRUCH_RE = re.compile(r'^Widerspruch\b',            re.IGNORECASE)
 _ZURUF_RE       = re.compile(r'^(?:Weitere\s+)?Zurufe?\b', re.IGNORECASE)
 _ZUSTIMMUNG_RE  = re.compile(r'^Zustimmung\b',             re.IGNORECASE)
 
+# Extracts the "bei …" portion of Beifall text to parse applauding parties.
+# Matches: "Beifall bei der SPD", "Beifall bei Abgeordneten der LINKEN", etc.
+_BEIFALL_BEI_RE = re.compile(r'Beifall\s+(?:im\s+ganzen\s+Hause|bei\s+(.+))$', re.IGNORECASE | re.DOTALL)
+
+# Tokeniser to split "der SPD und der FDP" into candidate party tokens.
+# Strips prepositions/articles so _match_faction sees the raw party name.
+_BEIFALL_SPLIT_RE = re.compile(
+    r'\bund\b|\bsowie\b|\bals auch\b',
+    re.IGNORECASE,
+)
+_BEIFALL_STRIP_RE = re.compile(
+    r'^(?:bei|beim|der|die|das|den|dem|des|Abgeordneten?|Abg\.|einigen|vielen|'
+    r'den\s+Abgeordneten?\s+(?:der|des)|Teilen?\s+(?:der|des))\s+',
+    re.IGNORECASE,
+)
+
+
+def _parse_beifall_parties(seg: str) -> list[str]:
+    """Extract recognised party names from a Beifall segment.
+
+    Returns a list of resolved faction strings (may be empty for 'im ganzen Hause' etc.).
+    """
+    m = _BEIFALL_BEI_RE.match(seg.strip())
+    if not m or not m.group(1):
+        return []
+    rest = m.group(1).strip()
+    parties: list[str] = []
+    for token in _BEIFALL_SPLIT_RE.split(rest):
+        token = _BEIFALL_STRIP_RE.sub('', token.strip()).strip().rstrip('.')
+        if not token:
+            continue
+        resolved = _match_faction(token)
+        if resolved and resolved not in parties:
+            parties.append(resolved)
+    return parties
+
 
 def _normalize_name_for_lookup(name: str) -> str:
     """Strip title and gender prefixes from a name for speaker lookup matching.
@@ -132,7 +168,7 @@ def _classify_segment(seg: str, speaker_lookup: dict[str, str] | None = None) ->
                 "caller_party": party}
 
     if _BEIFALL_RE.match(seg):
-        return {**base, "type": TYPE_BEIFALL}
+        return {**base, "type": TYPE_BEIFALL, "caller_parties": _parse_beifall_parties(seg)}
     if _HEITERKEIT_RE.match(seg):
         return {**base, "type": TYPE_HEITERKEIT}
     if _LACHEN_RE.match(seg):
@@ -219,15 +255,20 @@ def extract_modern_term(
                     for child in rede:
                         if child.tag == "kommentar" and child.text:
                             for seg in parse_kommentar(child.text):
-                                records.append({
+                                base_rec = {
                                     "speech_id":            speech_id,
                                     "electoral_term":       electoral_term,
                                     "session":              session,
                                     "date":                 date,
                                     "target_speaker_id":    target_speaker_id,
                                     "target_speaker_party": target_party,
-                                    **seg,
-                                })
+                                }
+                                if seg["type"] == TYPE_BEIFALL:
+                                    parties = seg.pop("caller_parties", [])
+                                    for party in parties:
+                                        records.append({**base_rec, **seg, "caller_party": party})
+                                else:
+                                    records.append({**base_rec, **seg})
 
     df = pd.DataFrame(records)
     print(
@@ -338,15 +379,20 @@ def extract_legacy_term(db_path: str | Path, electoral_term: int) -> pd.DataFram
         for m in _LEGACY_PAREN_RE.finditer(content):
             segs = _parse_legacy_paren(m.group(1), speaker_lookup=speaker_lookup)
             for seg in segs:
-                records.append({
+                base_rec = {
                     "speech_id":            speech_id,
                     "electoral_term":       electoral_term,
                     "session":              str(session) if session else None,
                     "date":                 date,
                     "target_speaker_id":    target_speaker_id,
                     "target_speaker_party": target_party,
-                    **seg,
-                })
+                }
+                if seg["type"] == TYPE_BEIFALL:
+                    parties = seg.pop("caller_parties", [])
+                    for party in parties:
+                        records.append({**base_rec, **seg, "caller_party": party})
+                else:
+                    records.append({**base_rec, **seg})
 
     df = pd.DataFrame(records)
     print(

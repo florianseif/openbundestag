@@ -148,3 +148,15 @@ export interface ZwischenrufSample {
 	text: string | null;
 	raw: string;
 }
+
+// Beifall (applause)
+export interface BeifallMeta {
+	available: boolean;
+	total: number;
+}
+
+export interface BeifallSelfOther {
+	caller_party: string;
+	is_self: boolean;
+	n: number;
+}
