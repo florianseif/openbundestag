@@ -366,7 +366,7 @@
 					{/if}
 				{:else}
 					{#if visibleMatrix.length}
-						<InterruptionMatrix rows={visibleMatrix} />
+						<InterruptionMatrix rows={visibleMatrix} showSamples={true} />
 					{:else}
 						<p class="empty">—</p>
 					{/if}
