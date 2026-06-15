@@ -203,10 +203,8 @@
 		box-shadow: 0 0 16px -4px var(--cc);
 		z-index: 2;
 	}
-	.cell.self {
-		background: rgba(255, 255, 255, 0.03);
-		border-style: dashed;
-		opacity: 0.4;
+	.cell.self.active {
+		box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cc) 50%, transparent);
 	}
 
 	.n {
