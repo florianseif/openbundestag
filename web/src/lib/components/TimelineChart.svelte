@@ -143,8 +143,8 @@
 
 	function onclick() {
 		if (!hoverRows || !hoverRows.items.length) return;
-		// Click anywhere on the chart drills into ALL parties at that period;
-		// clicking a specific party dot (below) still drills into that one party.
+		// Clicking the chart drills into ALL parties at that period (the markers
+		// do the same) — never just the top-most line.
 		onpick?.(hoverRows.period);
 	}
 
@@ -290,8 +290,8 @@
 					role="button"
 					tabindex="0"
 					aria-label="{r.party} {hoverRows.period}"
-					onclick={() => onpick?.(hoverRows.period, r.party)}
-					onkeydown={(e) => e.key === 'Enter' && onpick?.(hoverRows.period, r.party)}
+					onclick={() => onpick?.(hoverRows.period)}
+					onkeydown={(e) => e.key === 'Enter' && onpick?.(hoverRows.period)}
 				/>
 			{/each}
 		{/if}
