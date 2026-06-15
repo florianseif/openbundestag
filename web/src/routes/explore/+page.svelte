@@ -191,8 +191,8 @@
 		const start = new Date(period);
 		const end = new Date(start);
 		end.setMonth(end.getMonth() + 3);
-		// A specific party dot drills into that party; a click anywhere keeps the
-		// active legend filter (filters.parties) so it shows all visible parties.
+		// Clicking any timeline point shows all parties at that period; the active
+		// legend filter (filters.parties) is still respected if one is set.
 		const parties = party ? [party] : filters.parties;
 		const label = party ?? (parties.length ? parties.join(', ') : i18n.t('all_parties'));
 		drill = {
