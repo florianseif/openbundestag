@@ -43,8 +43,13 @@ _PARTICLES = {
 }
 
 # Title / honorific cruft that leaks into the legacy first_name field.
+# Covers both personal titles (Dr, Prof) and role prefixes that the legacy
+# XML parser picked up when the speaker was introduced by role rather than
+# name (e.g. "Staatsminister Joseph" → strips "Staatsminister", leaves "Joseph").
 _TITLE_CRUFT = re.compile(
-    r"^(?:Dr|Prof|D|Frau|Herr|Abg|Ing|Freiherr|Graf|Gräfin|Baron)\b\.?\s*",
+    r"^(?:Dr|Prof|D|Frau|Herr|Abg|Ing|Freiherr|Graf|Gräfin|Baron"
+    r"|Staatsminister|Bundesminister|Ministerpräsident|Staatssekretär"
+    r"|Parlamentarischer\s+Staatssekretär|Kollegen?|Abgeordneten?)\b\.?\s*",
     re.IGNORECASE,
 )
 
