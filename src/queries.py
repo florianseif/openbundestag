@@ -78,6 +78,35 @@ KNOWN_PARTIES_SQL = ", ".join(
     f"'{p.replace(chr(39), chr(39) * 2)}'" for p in KNOWN_PARTIES
 )
 
+# Canonical party order by parliamentary founding / first Bundestag entry date.
+# Fraktionslos always sorts last. Unknown is excluded from public lists.
+PARTY_FOUNDING_ORDER: list[str] = [
+    "SPD",                   # 1863 / 1875
+    "Z",                     # 1870
+    "KPD",                   # 1918
+    "CDU/CSU",               # 1945
+    "DP",                    # 1945
+    "WAV",                   # 1945
+    "BP",                    # 1946
+    "SSW",                   # 1948
+    "FDP",                   # 1948
+    "DRP",                   # 1950
+    "GB/BHE",                # 1950
+    "FVP",                   # 1956
+    "Bündnis 90/Die Grünen", # 1980 / merged 1993
+    "PDS",                   # 1989
+    "Die Linke",             # 2007
+    "AfD",                   # 2013
+    "BSW",                   # 2024
+    "Fraktionslos",          # last
+]
+_PARTY_RANK: dict[str, int] = {p: i for i, p in enumerate(PARTY_FOUNDING_ORDER)}
+
+
+def _party_sort_key(name: str) -> int:
+    return _PARTY_RANK.get(name, len(PARTY_FOUNDING_ORDER))
+
+
 # Parties that no longer hold seats — hidden by default in the UI.
 HISTORICAL_PARTIES: set[str] = {
     "KPD", "DP", "GB/BHE", "BP", "WAV", "DRP", "FVP", "FU", "DA", "DBP",
@@ -248,9 +277,10 @@ def date_range(con: duckdb.DuckDBPyConnection) -> tuple | None:
 
 def parties(con: duckdb.DuckDBPyConnection) -> list[str]:
     df = con.execute(
-        f"SELECT DISTINCT {FACTION_COL} AS party FROM speeches ORDER BY 1"
+        f"SELECT DISTINCT {FACTION_COL} AS party FROM speeches"
     ).fetchdf()
-    return [p for p in df["party"].tolist() if p and p != "Unknown"]
+    result = [p for p in df["party"].tolist() if p and p != "Unknown"]
+    return sorted(result, key=_party_sort_key)
 
 
 def politicians(

@@ -4,7 +4,7 @@
 	import { extent, max, bisector } from 'd3-array';
 	import { timeFormat } from 'd3-time-format';
 	import type { TimelinePoint } from '$lib/types';
-	import { partyColor, partyFullName, formatNumber } from '$lib/format';
+	import { partyColor, partyFullName, formatNumber, partyFoundingOrder } from '$lib/format';
 	import { i18n } from '$lib/i18n.svelte';
 	import governmentsRaw from '$lib/governments.json';
 
@@ -40,7 +40,7 @@
 	const periods = $derived([...new Set(data.map((d) => d.period))].sort());
 	const parties = $derived(
 		[...new Set(data.map((d) => d.party))].sort(
-			(a, b) => total(b) - total(a)
+			(a, b) => partyFoundingOrder(a) - partyFoundingOrder(b)
 		)
 	);
 	function total(party: string) {
