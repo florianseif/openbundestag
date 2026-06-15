@@ -13,7 +13,6 @@
 		ZwischenrufCallerCount,
 		ZwischenrufPartyCount,
 		ZwischenrufMatrixRow,
-		ZwischenrufType,
 		TermInfo
 	} from '$lib/types';
 
@@ -26,7 +25,8 @@
 	let loading = $state(true);
 	let bootError = $state<string | null>(null);
 
-	let typeFilter = $state<ZwischenrufType | ''>('Zwischenruf');
+	let callerPartyFilter = $state('');
+	let targetPartyFilter = $state('');
 	let terms = $state<number[]>([21]);
 	let activeView = $state<'matrix' | 'parties' | 'callers' | 'feed'>('matrix');
 
@@ -52,12 +52,12 @@
 	}
 
 	async function reload() {
-		const tf = typeFilter || 'Zwischenruf';
 		const t = terms;
+		const cp = callerPartyFilter || undefined;
 		const [tc, bp, mx] = await Promise.allSettled([
-			api.zwischenrufe.topCallers(tf, t, undefined, 20),
-			api.zwischenrufe.byParty(tf, t),
-			api.zwischenrufe.matrix(tf, t)
+			api.zwischenrufe.topCallers('Zwischenruf', t, cp, 20),
+			api.zwischenrufe.byParty('Zwischenruf', t),
+			api.zwischenrufe.matrix('Zwischenruf', t)
 		]);
 		if (tc.status === 'fulfilled') topCallers = tc.value;
 		if (bp.status === 'fulfilled') byParty = bp.value;
@@ -70,7 +70,7 @@
 
 	let debounce: ReturnType<typeof setTimeout>;
 	$effect(() => {
-		void typeFilter; void terms;
+		void callerPartyFilter; void terms;
 		if (!meta?.available) return;
 		clearTimeout(debounce);
 		debounce = setTimeout(reload, 200);
@@ -81,12 +81,36 @@
 	const isRealParty = (p: string | null | undefined): p is string =>
 		!!p && p !== 'Unknown';
 
+	const callerPartyOptions = $derived(
+		[...byParty]
+			.sort((a, b) => partyFoundingOrder(a.caller_party) - partyFoundingOrder(b.caller_party))
+			.map((p) => p.caller_party)
+	);
+
+	const targetPartyOptions = $derived(
+		[...new Set(
+			matrix
+				.filter((r) => isRealParty(r.target_speaker_party))
+				.map((r) => r.target_speaker_party!)
+		)].sort((a, b) => partyFoundingOrder(a) - partyFoundingOrder(b))
+	);
+
 	const visibleTopCallers = $derived(topCallers);
 
-	const visibleByParty = $derived(byParty);
+	const visibleByParty = $derived(
+		callerPartyFilter
+			? byParty.filter((p) => p.caller_party === callerPartyFilter)
+			: byParty
+	);
 
 	const visibleMatrix = $derived(
-		matrix.filter((r) => isRealParty(r.caller_party) && isRealParty(r.target_speaker_party))
+		matrix.filter(
+			(r) =>
+				isRealParty(r.caller_party) &&
+				isRealParty(r.target_speaker_party) &&
+				(!callerPartyFilter || r.caller_party === callerPartyFilter) &&
+				(!targetPartyFilter || r.target_speaker_party === targetPartyFilter)
+		)
 	);
 
 	const callerBars = $derived(
@@ -190,16 +214,30 @@
 
 		<!-- ── Filters ────────────────────────────────────────────────────── -->
 		<div class="filter-bar glass">
-			<label class="filter-group">
-				<span class="filter-label">{i18n.t('zw_filter_type')}</span>
-				<select bind:value={typeFilter} class="sel">
-					<option value="Zwischenruf">{i18n.t('zw_type_zwischenruf')}</option>
-					<option value="Beifall">{i18n.t('zw_type_beifall')}</option>
-					<option value="Heiterkeit">{i18n.t('zw_type_heiterkeit')}</option>
-					<option value="Widerspruch">{i18n.t('zw_type_widerspruch')}</option>
-					<option value="Zuruf">{i18n.t('zw_type_zuruf')}</option>
-				</select>
-			</label>
+			<div class="filter-row">
+				{#if callerPartyOptions.length}
+					<label class="filter-group">
+						<span class="filter-label">{i18n.t('zw_filter_caller')}</span>
+						<select bind:value={callerPartyFilter} class="sel">
+							<option value="">{i18n.t('all_parties')}</option>
+							{#each callerPartyOptions as p}
+								<option value={p}>{p}</option>
+							{/each}
+						</select>
+					</label>
+				{/if}
+				{#if targetPartyOptions.length}
+					<label class="filter-group">
+						<span class="filter-label">{i18n.t('zw_filter_target')}</span>
+						<select bind:value={targetPartyFilter} class="sel">
+							<option value="">{i18n.t('all_parties')}</option>
+							{#each targetPartyOptions as p}
+								<option value={p}>{p}</option>
+							{/each}
+						</select>
+					</label>
+				{/if}
+			</div>
 			{#if termOptions.length}
 				<div class="filter-terms">
 					<TermFilter bind:selected={terms} options={termOptions} />
@@ -343,7 +381,7 @@
 				<header class="p-head">
 					<h3>{i18n.t('zw_feed_title')}</h3>
 				</header>
-				<ZwischenrufFeed {terms} />
+				<ZwischenrufFeed {terms} callerParty={callerPartyFilter} targetParty={targetPartyFilter} />
 			</section>
 		{/if}
 	{/if}
@@ -445,9 +483,14 @@
 	/* ── Filter bar ── */
 	.filter-bar {
 		display: flex;
+		flex-direction: column;
+		gap: 0;
+		padding: 0.95rem 1.2rem;
+	}
+	.filter-row {
+		display: flex;
 		gap: 1.1rem;
 		flex-wrap: wrap;
-		padding: 0.95rem 1.2rem;
 		align-items: center;
 	}
 	.filter-group {
@@ -455,11 +498,10 @@
 		align-items: center;
 		gap: 0.55rem;
 	}
-	/* The Wahlperiode chip bar takes its own full-width row below the type select */
 	.filter-terms {
-		flex: 1 1 100%;
 		min-width: 0;
 		padding-top: 0.85rem;
+		margin-top: 0.85rem;
 		border-top: 1px solid var(--line);
 	}
 	.filter-label {
@@ -628,6 +670,6 @@
 	@media (max-width: 540px) {
 		.metrics { grid-template-columns: 1fr; }
 		.adventure-tabs { grid-template-columns: 1fr; }
-		.filter-bar { flex-direction: column; align-items: flex-start; }
+		.filter-row { flex-direction: column; align-items: flex-start; }
 	}
 </style>
