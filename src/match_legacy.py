@@ -54,15 +54,21 @@ _OVERRIDES_PATH = Path(__file__).parent.parent / "data" / "legacy_overrides.json
 def _load_overrides() -> dict[tuple, int]:
     """Load manual overrides from data/legacy_overrides.json.
 
-    Returns a dict keyed by (electoral_term, last_name, first_name) → politician_id.
+    Returns a dict keyed by (electoral_term, speech_last_name, speech_first_name)
+    → politician_id.
     """
     if not _OVERRIDES_PATH.exists():
         return {}
     with open(_OVERRIDES_PATH, encoding="utf-8") as fh:
-        entries = json.load(fh)
+        data = json.load(fh)
+    entries = data["overrides"] if isinstance(data, dict) else data
     overrides: dict[tuple, int] = {}
     for e in entries:
-        key = (int(e["electoral_term"]), e["last_name"], e.get("first_name", ""))
+        key = (
+            int(e["electoral_term"]),
+            e["speech_last_name"],
+            e.get("speech_first_name", ""),
+        )
         overrides[key] = int(e["politician_id"])
     print(f"[legacy-match] loaded {len(overrides)} manual overrides", flush=True)
     return overrides
@@ -204,8 +210,8 @@ def match_legacy(db_path: str | Path) -> None:
             last, first = k["last_name"], k["first_name"]
             term = int(k["electoral_term"])
 
-            # Step 0: manual overrides take priority.
-            override_key = (term, last, first)
+            # Step 0: manual overrides take priority (keyed on raw speech fields).
+            override_key = (term, k["last_name"], k["first_name"])
             if override_key in overrides:
                 rows.append({
                     "electoral_term": term,

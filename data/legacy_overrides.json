@@ -1,65 +1,99 @@
-[
-  {
-    "electoral_term": 12,
-    "last_name": "Bläss",
-    "first_name": "Petra",
-    "politician_id": 11000189,
-    "note": "Stammdaten: Bläss-Rafajlovski — hyphenated surname not matched by registry lookup"
+{
+  "_info": {
+    "purpose": "Manual politician_id assignments for legacy speeches (terms 1-18) that the automatic matcher could not resolve.",
+    "when_to_add": "Run '--phase legacy-match', then open openbundestag-data.legacy_unresolved.csv. Each row is a distinct (electoral_term, last_name, first_name) speaker key that failed. Find the correct politician_id in the politicians table (DuckDB) or MdB-Stammdaten.XML, add an entry here, re-run '--phase legacy-match'.",
+    "how_to_find_id": "SELECT p.id, p.last_name, p.first_name, pt.electoral_term, pt.faction FROM politicians p JOIN politician_terms pt ON p.id = pt.id WHERE lower(p.last_name) LIKE '%<name>%' ORDER BY pt.electoral_term",
+    "fields": {
+      "electoral_term": "Bundestag Wahlperiode (1–18). Must match the value in the speeches table.",
+      "speech_last_name": "Last name exactly as it appears in the speeches table (copy from legacy_unresolved.csv).",
+      "speech_first_name": "First name exactly as it appears in the speeches table. Empty string if the XML had no first name.",
+      "politician_id": "Official 8-digit MdB ID from Stammdaten (politicians.id in DuckDB).",
+      "politician_name": "Full name from Stammdaten — for human verification only, not used by the code.",
+      "reason_unresolved": "Why the automatic matcher failed. Copy from legacy_unresolved.csv.",
+      "note": "What caused the mismatch and how you found the correct ID."
+    }
   },
-  {
-    "electoral_term": 13,
-    "last_name": "Bläss",
-    "first_name": "Petra",
-    "politician_id": 11000189,
-    "note": "Stammdaten: Bläss-Rafajlovski — hyphenated surname not matched by registry lookup"
-  },
-  {
-    "electoral_term": 14,
-    "last_name": "Bläss",
-    "first_name": "Petra",
-    "politician_id": 11000189,
-    "note": "Stammdaten: Bläss-Rafajlovski — hyphenated surname not matched by registry lookup"
-  },
-  {
-    "electoral_term": 2,
-    "last_name": "Gerstenmaler",
-    "first_name": "D. Dr.",
-    "politician_id": 11000669,
-    "note": "OCR typo in XML: Gerstenmaler → Gerstenmaier, Eugen (Bundestagspräsident)"
-  },
-  {
-    "electoral_term": 5,
-    "last_name": "Brandt",
-    "first_name": "",
-    "politician_id": 11000246,
-    "note": "Willy Brandt (SPD) — term 5 absent from Stammdaten (gap); Brandt was SPD leader and MdB in term 5 (1965–69)"
-  },
-  {
-    "electoral_term": 7,
-    "last_name": "Friderichs",
-    "first_name": "",
-    "politician_id": 11000586,
-    "note": "Hans Friderichs (FDP) — term 7 absent from Stammdaten; he was FDP MdB and later minister in term 7"
-  },
-  {
-    "electoral_term": 7,
-    "last_name": "Gscheidle",
-    "first_name": "",
-    "politician_id": 11000745,
-    "note": "Kurt Gscheidle (SPD) — term 7 absent from Stammdaten; present in terms 4–6 and 8"
-  },
-  {
-    "electoral_term": 5,
-    "last_name": "Lauritzen",
-    "first_name": "",
-    "politician_id": 11001295,
-    "note": "Lauritz Lauritzen (SPD) — term 5 absent from Stammdaten; present in terms 6–8"
-  },
-  {
-    "electoral_term": 12,
-    "last_name": "Rexrodt",
-    "first_name": "Günter",
-    "politician_id": 11002759,
-    "note": "Günter Rexrodt (FDP) — term 12 absent from Stammdaten; present in terms 13–15; was Economics Minister from 1993"
-  }
-]
+  "overrides": [
+    {
+      "electoral_term": 12,
+      "speech_last_name": "Bläss",
+      "speech_first_name": "Petra",
+      "politician_id": 11000189,
+      "politician_name": "Petra Bläss-Rafajlovski",
+      "reason_unresolved": "surname-not-found",
+      "note": "Stammdaten stores her as Bläss-Rafajlovski (hyphenated married name). The XML uses only Bläss."
+    },
+    {
+      "electoral_term": 13,
+      "speech_last_name": "Bläss",
+      "speech_first_name": "Petra",
+      "politician_id": 11000189,
+      "politician_name": "Petra Bläss-Rafajlovski",
+      "reason_unresolved": "surname-not-found",
+      "note": "Same as term 12 — hyphenated surname in Stammdaten."
+    },
+    {
+      "electoral_term": 14,
+      "speech_last_name": "Bläss",
+      "speech_first_name": "Petra",
+      "politician_id": 11000189,
+      "politician_name": "Petra Bläss-Rafajlovski",
+      "reason_unresolved": "surname-not-found",
+      "note": "Same as term 12 — hyphenated surname in Stammdaten."
+    },
+    {
+      "electoral_term": 2,
+      "speech_last_name": "Gerstenmaler",
+      "speech_first_name": "D. Dr.",
+      "politician_id": 11000669,
+      "politician_name": "Eugen Gerstenmaier",
+      "reason_unresolved": "surname-not-found",
+      "note": "OCR/transcription typo in the XML: Gerstenmaler instead of Gerstenmaier. Bundestagspräsident 1954–1969."
+    },
+    {
+      "electoral_term": 5,
+      "speech_last_name": "Brandt",
+      "speech_first_name": "",
+      "politician_id": 11000246,
+      "politician_name": "Willy Brandt",
+      "reason_unresolved": "surname-not-found",
+      "note": "Term 5 (1965–69) is absent from Stammdaten for Brandt, despite him being SPD leader and MdB. Stammdaten gap. first_name is empty because the XML had no first name for this entry."
+    },
+    {
+      "electoral_term": 7,
+      "speech_last_name": "Friderichs",
+      "speech_first_name": "",
+      "politician_id": 11000586,
+      "politician_name": "Hans Friderichs",
+      "reason_unresolved": "surname-not-found",
+      "note": "Term 7 (1969–72) absent from Stammdaten. Friderichs is listed for terms 5 and 8 only. Was FDP MdB and Federal Economics Minister in term 7. first_name empty because XML had no first name."
+    },
+    {
+      "electoral_term": 7,
+      "speech_last_name": "Gscheidle",
+      "speech_first_name": "",
+      "politician_id": 11000745,
+      "politician_name": "Kurt Gscheidle",
+      "reason_unresolved": "surname-not-found",
+      "note": "Term 7 absent from Stammdaten. Listed for terms 4, 5, 6, and 8. SPD MdB and minister. first_name empty because XML had no first name."
+    },
+    {
+      "electoral_term": 5,
+      "speech_last_name": "Lauritzen",
+      "speech_first_name": "",
+      "politician_id": 11001295,
+      "politician_name": "Lauritz Lauritzen",
+      "reason_unresolved": "surname-not-found",
+      "note": "Term 5 absent from Stammdaten. Listed for terms 6, 7, 8. SPD MdB and Housing Minister. first_name empty because the XML referred to him only as 'Lauritzen' (no first name)."
+    },
+    {
+      "electoral_term": 12,
+      "speech_last_name": "Rexrodt",
+      "speech_first_name": "Günter",
+      "politician_id": 11002759,
+      "politician_name": "Günter Rexrodt",
+      "reason_unresolved": "surname-not-found",
+      "note": "Term 12 absent from Stammdaten. Listed from term 13 onwards. Was FDP Economics Minister from 1993, likely also held MdB seat in term 12."
+    }
+  ]
+}
