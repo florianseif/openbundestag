@@ -76,6 +76,34 @@ export function partyFullName(party: string): string {
 	return fullNames[party] ?? party;
 }
 
+// Canonical party order by founding date (mirrors src/queries.py PARTY_FOUNDING_ORDER).
+// Parties not in this list sort to the end; Fraktionslos is explicitly last.
+const PARTY_FOUNDING_ORDER: string[] = [
+	'SPD',
+	'Z',
+	'KPD',
+	'CDU/CSU',
+	'DP',
+	'WAV',
+	'BP',
+	'SSW',
+	'FDP',
+	'DRP',
+	'GB/BHE',
+	'FVP',
+	'Bündnis 90/Die Grünen',
+	'PDS',
+	'Die Linke',
+	'AfD',
+	'BSW',
+	'Fraktionslos'
+];
+const _partyRank = new Map(PARTY_FOUNDING_ORDER.map((p, i) => [p, i]));
+
+export function partyFoundingOrder(party: string): number {
+	return _partyRank.get(party) ?? PARTY_FOUNDING_ORDER.length;
+}
+
 export function formatNumber(n: number, lang: Lang): string {
 	return new Intl.NumberFormat(lang === 'de' ? 'de-DE' : 'en-GB').format(Math.round(n));
 }
