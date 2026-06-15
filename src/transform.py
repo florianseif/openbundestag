@@ -41,7 +41,7 @@ FACTION_PATTERNS: dict[str, str] = {
     "CDU/CSU":               r"(?:Gast|-)?(?:\s*C\s*[DSMU]\s*S?[DU]\s*(?:\s*[/,':!.\-]?)*\s*(?:\s*C+\s*[DSs]?\s*[UÙ]?\s*)?)(?:-?Hosp\.|-Gast|1)?",
     "DA":                    r"^DA$",
     "DBP":                   r"^DBP$",
-    "Die Linke":             r"(?:DIE\s+)?LINKE|Die\s+Linke",
+    "Die Linke":             r"(?:DIE\s+)?LINKEn?|(?:Die\s+)?Linken?",
     "DP":                    r"^DP(?:\s*[\[/]?\s*FVP\]?)?$",
     "DRP":                   r"DRP(?:-Hosp\.)?|^SRP$",
     "FDP":                   r"\s*F\.?\s*[PDO][.']?[DP]\.?",
