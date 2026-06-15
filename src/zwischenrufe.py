@@ -87,7 +87,10 @@ def _parse_beifall_parties(seg: str) -> list[str]:
     rest = m.group(1).strip()
     parties: list[str] = []
     for token in _BEIFALL_SPLIT_RE.split(rest):
-        token = _BEIFALL_STRIP_RE.sub('', token.strip()).strip().rstrip('.')
+        prev = None
+        while prev != token:
+            prev = token
+            token = _BEIFALL_STRIP_RE.sub('', token.strip()).strip().rstrip('.')
         if not token:
             continue
         resolved = _match_faction(token)
