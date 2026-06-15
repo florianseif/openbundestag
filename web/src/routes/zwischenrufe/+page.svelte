@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 	import { i18n } from '$lib/i18n.svelte';
-	import { partyColor, formatNumber } from '$lib/format';
+	import { partyColor, formatNumber, partyFoundingOrder } from '$lib/format';
 	import Counter from '$lib/components/Counter.svelte';
 	import HBars from '$lib/components/HBars.svelte';
 	import PageHero from '$lib/components/PageHero.svelte';
@@ -99,11 +99,13 @@
 	);
 
 	const partyBars = $derived(
-		visibleByParty.map((p) => ({
-			label: p.caller_party,
-			value: p.n,
-			color: partyColor(p.caller_party)
-		}))
+		[...visibleByParty]
+			.sort((a, b) => partyFoundingOrder(a.caller_party) - partyFoundingOrder(b.caller_party))
+			.map((p) => ({
+				label: p.caller_party,
+				value: p.n,
+				color: partyColor(p.caller_party)
+			}))
 	);
 
 	// Stat cards derived from data

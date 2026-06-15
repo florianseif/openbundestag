@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { partyColor } from '$lib/format';
+	import { partyColor, partyFoundingOrder } from '$lib/format';
 	import { formatNumber } from '$lib/format';
 	import type { ZwischenrufMatrixRow } from '$lib/types';
 
@@ -8,12 +8,12 @@
 	// Derive ordered party lists from data
 	const callers = $derived(
 		[...new Set(rows.map((r) => r.caller_party))].sort(
-			(a, b) => totalByParty(b, 'caller') - totalByParty(a, 'caller')
+			(a, b) => partyFoundingOrder(a) - partyFoundingOrder(b)
 		)
 	);
 	const targets = $derived(
 		[...new Set(rows.map((r) => r.target_speaker_party))].sort(
-			(a, b) => totalByParty(b, 'target') - totalByParty(a, 'target')
+			(a, b) => partyFoundingOrder(a) - partyFoundingOrder(b)
 		)
 	);
 
