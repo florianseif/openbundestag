@@ -5,6 +5,7 @@
     "how_to_find_id": "SELECT p.id, p.last_name, p.first_name, pt.electoral_term, pt.faction FROM politicians p JOIN politician_terms pt ON p.id = pt.id WHERE lower(p.last_name) LIKE '%<name>%' ORDER BY pt.electoral_term",
     "fields": {
       "electoral_term": "Bundestag Wahlperiode (1–18). Must match the value in the speeches table.",
+      "session": "(Optional) Session number, e.g. '07047'. If present, the override only applies to speeches from that specific session file. If absent, applies to all sessions in the term. Use session-scoped overrides for ambiguous surnames (multiple candidates) where you can identify the speaker from context. Copy the value from the session column in legacy_unresolved.csv.",
       "speech_last_name": "Last name exactly as it appears in the speeches table (copy from legacy_unresolved.csv).",
       "speech_first_name": "First name exactly as it appears in the speeches table. Empty string if the XML had no first name.",
       "politician_id": "Official 8-digit MdB ID from Stammdaten (politicians.id in DuckDB).",

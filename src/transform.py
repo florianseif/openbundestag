@@ -211,6 +211,7 @@ def parse_session(xml_path: Path, electoral_term: int) -> list[dict]:
                 "position_short": pos_short,
                 "position_long":  pos_long,
                 "speech_content": speech_content,
+                "filename":       xml_path.name,
             })
 
     return records
@@ -351,6 +352,7 @@ def parse_legacy_session(xml_path: Path, electoral_term: int) -> list[dict]:
             "position_short": pos_short,
             "position_long":  pos_long,
             "speech_content": speech_content,
+            "filename":       xml_path.name,
         })
 
     return records

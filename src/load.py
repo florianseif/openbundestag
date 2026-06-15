@@ -94,6 +94,14 @@ CREATE TABLE IF NOT EXISTS speakers (
     faction      VARCHAR
 );
 
+CREATE TABLE IF NOT EXISTS session_files (
+    id             INTEGER PRIMARY KEY,
+    electoral_term INTEGER NOT NULL,
+    session        VARCHAR NOT NULL,
+    filename       VARCHAR NOT NULL,
+    UNIQUE (electoral_term, session)
+);
+
 CREATE TABLE IF NOT EXISTS speeches (
     id             INTEGER PRIMARY KEY,
     session        VARCHAR,
@@ -105,7 +113,8 @@ CREATE TABLE IF NOT EXISTS speeches (
     faction        VARCHAR,
     position_short VARCHAR,
     position_long  VARCHAR,
-    speech_content TEXT
+    speech_content TEXT,
+    file_id        INTEGER REFERENCES session_files(id)
 );
 
 CREATE TABLE IF NOT EXISTS ministers (
@@ -147,6 +156,13 @@ def init_db(db_path: str | Path) -> None:
     print(f"[load] Database initialised → {db_path}", flush=True)
 
 
+_SPEECH_COLS = [
+    "id", "session", "electoral_term", "date", "politician_id",
+    "first_name", "last_name", "faction", "position_short",
+    "position_long", "speech_content",
+]
+
+
 def load_data(
     db_path: str | Path,
     speakers: pd.DataFrame,
@@ -154,27 +170,71 @@ def load_data(
 ) -> None:
     """Upsert speakers and append speeches using direct DataFrame transfers."""
     with duckdb.connect(str(db_path)) as conn:
+        # Migrate existing DBs that predate session_files / file_id.
+        conn.execute(
+            "ALTER TABLE speeches ADD COLUMN IF NOT EXISTS file_id INTEGER"
+        )
+
         # speakers: insert-or-ignore so repeated runs don't duplicate rows
         existing_ids: set[int] = set(
             conn.execute("SELECT id FROM speakers").fetchdf()["id"].tolist()
         )
         new_speakers = speakers[~speakers["id"].isin(existing_ids)]
         if not new_speakers.empty:
-            conn.execute(
-                "INSERT INTO speakers SELECT * FROM new_speakers"
-            )
-            print(
-                f"[load] Inserted {len(new_speakers)} new speakers", flush=True
-            )
+            conn.execute("INSERT INTO speakers SELECT * FROM new_speakers")
+            print(f"[load] Inserted {len(new_speakers)} new speakers", flush=True)
 
-        # speeches: determine next id offset so re-runs don't collide
-        max_id_row = conn.execute("SELECT COALESCE(MAX(id), -1) FROM speeches").fetchone()
+        # session_files: upsert one row per unique (electoral_term, session).
+        if "filename" in speeches.columns:
+            new_files = (
+                speeches[["electoral_term", "session", "filename"]]
+                .drop_duplicates(subset=["electoral_term", "session"])
+                .copy()
+            )
+            existing_sessions = conn.execute(
+                "SELECT electoral_term, session FROM session_files"
+            ).fetchdf()
+            existing_keys = set(
+                zip(existing_sessions["electoral_term"], existing_sessions["session"])
+            )
+            to_add = new_files[
+                ~new_files.apply(
+                    lambda r: (r["electoral_term"], r["session"]) in existing_keys,
+                    axis=1,
+                )
+            ].copy()
+            if not to_add.empty:
+                max_fid = conn.execute(
+                    "SELECT COALESCE(MAX(id), 0) FROM session_files"
+                ).fetchone()[0]
+                to_add.insert(0, "id", range(max_fid + 1, max_fid + 1 + len(to_add)))
+                conn.execute("INSERT INTO session_files SELECT * FROM to_add")
+                print(f"[load] Registered {len(to_add)} session files", flush=True)
+
+        # speeches: insert only the canonical columns (file_id is set below).
+        max_id_row = conn.execute(
+            "SELECT COALESCE(MAX(id), -1) FROM speeches"
+        ).fetchone()
         offset = int(max_id_row[0]) + 1 if max_id_row else 0
-        speeches_to_insert = speeches.copy()
+        speeches_to_insert = speeches[_SPEECH_COLS].copy()
         speeches_to_insert["id"] = speeches_to_insert["id"] + offset
-
-        conn.execute("INSERT INTO speeches SELECT * FROM speeches_to_insert")
+        col_list = ", ".join(_SPEECH_COLS)
+        conn.execute(
+            f"INSERT INTO speeches ({col_list}) SELECT {col_list} FROM speeches_to_insert"
+        )
         print(f"[load] Inserted {len(speeches_to_insert)} speeches", flush=True)
+
+        # Populate file_id for newly inserted speeches via session join.
+        conn.execute(
+            """
+            UPDATE speeches s
+            SET file_id = sf.id
+            FROM session_files sf
+            WHERE sf.electoral_term = s.electoral_term
+              AND sf.session = s.session
+              AND s.file_id IS NULL
+            """
+        )
 
     print(f"[load] Done → {db_path}", flush=True)
 
