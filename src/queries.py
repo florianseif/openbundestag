@@ -211,6 +211,18 @@ def has_text_table(con: duckdb.DuckDBPyConnection) -> bool:
     )
 
 
+def _has_registry(con: duckdb.DuckDBPyConnection) -> bool:
+    """True when the MdB registry view ``_registry_names`` is present (built by
+    the stammdaten phase).  Lets top_politicians resolve canonical names while
+    staying compatible with older DBs that predate the registry."""
+    return bool(
+        con.execute(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_name = '_registry_names'"
+        ).fetchone()
+    )
+
+
 def _text_source(con: duckdb.DuckDBPyConnection) -> tuple[str, str]:
     """Resolve where the drill-down reads passage text from.
 
@@ -389,14 +401,27 @@ def top_politicians(
         extra=["politician_id != -1", "last_name != ''", f"{FACTION_COL} != 'Unknown'"],
     )
     params.append(int(top_n))
+    # When the MdB registry is present (built by the stammdaten phase), resolve
+    # the display name from it via politician_id.  This gives clean, canonical
+    # names for legacy speakers (whose parsed first/last fields are noisy, e.g.
+    # "Frau Renger") and collapses name variants of the same person onto one row.
+    # Falls back to the speech's own name fields when the id is not in the
+    # registry (placeholder ids) or the registry table does not exist.
+    if _has_registry(con):
+        name_expr = "COALESCE(reg.name, s.first_name || ' ' || s.last_name)"
+        join = "LEFT JOIN _registry_names reg ON reg.id = s.politician_id"
+    else:
+        name_expr = "s.first_name || ' ' || s.last_name"
+        join = ""
     sql = f"""
         SELECT
-            first_name || ' ' || last_name AS politician,
-            {FACTION_COL}                  AS party,
-            COUNT(*)                       AS speeches
-        FROM speeches
+            {name_expr}     AS politician,
+            {FACTION_COL}   AS party,
+            COUNT(*)        AS speeches
+        FROM speeches s
+        {join}
         WHERE {where}
-        GROUP BY politician, party
+        GROUP BY s.politician_id, politician, party
         ORDER BY speeches DESC
         LIMIT ?
     """

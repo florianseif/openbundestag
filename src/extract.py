@@ -6,7 +6,16 @@ Uses Playwright (via subprocess) to handle the JS-based bot-protection
 
 import subprocess
 import sys
+import urllib.request
+import zipfile
 from pathlib import Path
+
+# MdB master data (Stammdaten) — one ZIP holding MDB_STAMMDATEN.XML with every
+# Bundestag member since 1949, their official 8-digit ID, name history and the
+# faction per electoral term.  Unlike the session archives this blob serves a
+# plain HTTP client fine (no bot challenge), so a direct download is enough.
+STAMMDATEN_URL = "https://www.bundestag.de/resource/blob/472878/MdB-Stammdaten.zip"
+STAMMDATEN_XML = "MDB_STAMMDATEN.XML"
 
 # Structured XML per session — modern terms
 FILTERLIST_URLS: dict[int, str] = {
@@ -62,6 +71,37 @@ def download_term(wahlperiode: int, data_dir: str | Path) -> Path:
             f"Supported terms: {ALL_TERMS}"
         )
     return term_dir
+
+
+def download_stammdaten(data_dir: str | Path) -> Path:
+    """Download and unpack the MdB-Stammdaten XML into *data_dir/stammdaten/*.
+
+    Returns the path to the extracted ``MDB_STAMMDATEN.XML``.  Re-entrant: if the
+    XML already exists it is reused (pass ``force=True`` semantics by deleting it
+    first).  This blob is not behind the bot-protection, so a plain urllib fetch
+    works without the Playwright worker the session archives need.
+    """
+    data_dir = Path(data_dir)
+    out_dir = data_dir / "stammdaten"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    xml_path = out_dir / STAMMDATEN_XML
+
+    if xml_path.exists():
+        print(f"[extract] Stammdaten already present → {xml_path}", flush=True)
+        return xml_path
+
+    zip_path = out_dir / "MdB-Stammdaten.zip"
+    print(f"[extract] Downloading Stammdaten → {STAMMDATEN_URL}", flush=True)
+    req = urllib.request.Request(STAMMDATEN_URL, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req) as resp, open(zip_path, "wb") as fh:
+        fh.write(resp.read())
+
+    with zipfile.ZipFile(zip_path) as zf:
+        zf.extract(STAMMDATEN_XML, out_dir)
+    zip_path.unlink(missing_ok=True)
+
+    print(f"[extract] Stammdaten extracted → {xml_path}", flush=True)
+    return xml_path
 
 
 def _run_worker(mode: str, wahlperiode: int, term_dir: Path, url: str) -> None:
