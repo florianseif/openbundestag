@@ -52,7 +52,7 @@ FACTION_PATTERNS: dict[str, str] = {
     "GB/BHE":                r"(?:GB[/-]\s*)?BHE(?:-DG)?",
     "KPD":                   r"^KPD$",
     "NR":                    r"^NR$",
-    "PDS":                   r"(?:Gruppe\s*der\s*)?PDS(?:/(?:LL|Linke Liste))?",
+    "PDS":                   r"(?:Gruppe\s*der\s*)?\bPDS\b(?:/(?:LL|Linke Liste))?",
     "SPD":                   r"\s*'?S(?:PD|DP)(?:\.|-Gast)?",
     "SSW":                   r"^SSW$",
     "WAV":                   r"^WAV$",
@@ -166,8 +166,11 @@ def parse_session(xml_path: Path, electoral_term: int) -> list[dict]:
             speaker_elem = rede.find(".//redner")
             if speaker_elem is not None:
                 try:
-                    politician_id = int(speaker_elem.get("id", -1))
-                except (ValueError, TypeError):
+                    # Some WP21 entries have two space-separated IDs (e.g. MdB who
+                    # is also a minister).  Take the first token.
+                    raw_id = speaker_elem.get("id", "").strip().split()[0]
+                    politician_id = int(raw_id)
+                except (ValueError, TypeError, IndexError):
                     politician_id = -1
 
                 name_node = speaker_elem.find("name")
