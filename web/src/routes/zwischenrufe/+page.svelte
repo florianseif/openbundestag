@@ -165,6 +165,8 @@
 <div class="wrap page">
 	<PageHero title={i18n.t('zw_title')} subtitle={i18n.t('zw_subtitle')} variant="warm" />
 
+	<p class="explainer">{i18n.t('zw_explainer')}</p>
+
 	{#if bootError}
 		<div class="alert glass">
 			<p>{bootError}</p>
@@ -408,6 +410,18 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.4rem;
+	}
+
+	.explainer {
+		font-size: 0.88rem;
+		color: var(--ink-2);
+		line-height: 1.6;
+		max-width: 68ch;
+		margin: 0;
+		padding: 0.75rem 1rem;
+		border-left: 2px solid #ff5d7d55;
+		background: rgba(255, 93, 125, 0.04);
+		border-radius: 0 6px 6px 0;
 	}
 
 	.boot-state {

@@ -127,6 +127,10 @@ export const STRINGS: Dict = {
 		de: 'Wer unterbricht wen im Deutschen Bundestag?',
 		en: 'Who heckles whom in the German Bundestag?'
 	},
+	zw_explainer: {
+		de: 'Zwischenrufe sind spontane Reaktionen aus dem Plenum während einer Rede — von lautem Protest und Gelächter bis zu zustimmendem „Hört! Hört!" und „Sehr richtig!". Sie sind also nicht immer feindlich. Hover über eine Heatmap-Kachel, um konkrete Beispiele zu lesen.',
+		en: 'Interjections are spontaneous reactions from the floor during a speech — from loud protest and laughter to approving "Hear! Hear!" and "Quite right!". They are not always hostile. Hover over a heatmap cell to read real examples.'
+	},
 	zw_total: { de: 'Reaktionen gesamt', en: 'Total reactions' },
 	zw_top_caller: { de: 'Aktivste/r Zwischenrufer/in', en: 'Most active heckler' },
 	zw_most_active_party: { de: 'Lauteste Fraktion', en: 'Loudest faction' },
