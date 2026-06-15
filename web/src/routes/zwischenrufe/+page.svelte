@@ -233,7 +233,7 @@
 				class="adv-tab"
 				class:active={activeView === 'matrix'}
 				onclick={() => (activeView = 'matrix')}
-				style="--tab-color: var(--accent-2)"
+				style="--tab-color: var(--spark)"
 			>
 				<div class="adv-icon">
 					<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -258,7 +258,7 @@
 				class="adv-tab"
 				class:active={activeView === 'parties'}
 				onclick={() => (activeView = 'parties')}
-				style="--tab-color: var(--gold)"
+				style="--tab-color: #ff8c55"
 			>
 				<div class="adv-icon">
 					<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -282,7 +282,7 @@
 				class="adv-tab"
 				class:active={activeView === 'callers'}
 				onclick={() => (activeView = 'callers')}
-				style="--tab-color: var(--spark)"
+				style="--tab-color: #e03050"
 			>
 				<div class="adv-icon">
 					<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -304,7 +304,7 @@
 				class="adv-tab"
 				class:active={activeView === 'feed'}
 				onclick={() => (activeView = 'feed')}
-				style="--tab-color: #6be4a0"
+				style="--tab-color: #ff9eb5"
 			>
 				<div class="adv-icon">
 					<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -422,10 +422,10 @@
 	.orb {
 		width: 56px; height: 56px;
 		border-radius: 50%;
-		background: var(--grad);
+		background: conic-gradient(from 0deg, #ff5d7d, #ff4e4e, #ff8c55, #ff5d7d);
 		filter: blur(2px);
 		animation: orb 1.6s ease infinite, spin 3s linear infinite;
-		box-shadow: var(--glow);
+		box-shadow: 0 0 32px 4px rgba(255, 93, 125, 0.4);
 	}
 	@keyframes orb {
 		0%, 100% { transform: scale(1); opacity: 0.9; }
@@ -460,8 +460,8 @@
 		position: absolute;
 		inset: 0 0 auto 0;
 		height: 2px;
-		background: var(--grad);
-		opacity: 0.7;
+		background: linear-gradient(90deg, #ff5d7d, #ff4e4e, #ff8c55);
+		opacity: 0.85;
 	}
 	.metric:hover { transform: translateY(-3px); }
 	.m-num {
@@ -638,8 +638,8 @@
 		transition: border-color 0.2s, box-shadow 0.2s;
 	}
 	.p-search:focus {
-		border-color: var(--accent);
-		box-shadow: 0 0 0 3px rgba(107, 145, 255, 0.15);
+		border-color: #ff5d7d;
+		box-shadow: 0 0 0 3px rgba(255, 93, 125, 0.15);
 	}
 	.p-search::placeholder { color: var(--ink-3); }
 
@@ -652,13 +652,13 @@
 	.pulse-dot {
 		width: 10px; height: 10px;
 		border-radius: 50%;
-		background: var(--accent);
+		background: #ff5d7d;
 		animation: pulse 1.4s ease infinite;
 	}
 	@keyframes pulse {
-		0% { box-shadow: 0 0 0 0 rgba(107, 145, 255, 0.55); }
-		70% { box-shadow: 0 0 0 10px rgba(107, 145, 255, 0); }
-		100% { box-shadow: 0 0 0 0 rgba(107, 145, 255, 0); }
+		0% { box-shadow: 0 0 0 0 rgba(255, 93, 125, 0.55); }
+		70% { box-shadow: 0 0 0 10px rgba(255, 93, 125, 0); }
+		100% { box-shadow: 0 0 0 0 rgba(255, 93, 125, 0); }
 	}
 	.spotlight-meta {
 		display: flex;
@@ -704,7 +704,7 @@
 	}
 	.btn:hover {
 		background: var(--surface-3);
-		border-color: var(--accent);
+		border-color: #ff5d7d;
 	}
 
 	@media (max-width: 900px) {
