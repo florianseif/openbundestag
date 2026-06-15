@@ -12,11 +12,13 @@ OpenBundestag is a standalone data pipeline + FastAPI/SvelteKit web app for expl
 uv sync                                  # install deps (uses uv.lock)
 uv run uvicorn api.main:app --port 8000  # run the API at http://localhost:8000
 
-# Pipeline (build the DB). Default term is 20.
-uv run run.py --phase all --term 20          # extract → transform → load → ministers → finalize → zwischenrufe
-uv run run.py --phase extract --term 20      # download raw XML/ZIP only
+# Pipeline (build the DB). Default term is 21.
+uv run run.py --phase all --term 21          # extract → transform → load → ministers → finalize → stammdaten → legacy-match → zwischenrufe
+uv run run.py --phase extract --term 21      # download raw XML/ZIP only
 uv run run.py --phase finalize               # rebuild derived columns (speech_content stays inline)
 uv run run.py --phase finalize --text-table  # move speech_content to speech_texts side table (leaner speeches table, reader still works)
+uv run run.py --phase stammdaten             # (re-)download MdB-Stammdaten XML + rebuild politician registry tables
+uv run run.py --phase legacy-match           # resolve politician_id for legacy terms 1–18 (needs stammdaten + finalize)
 uv run run.py --phase zwischenrufe --term 20 # (re-)extract interjections for a term (needs finalize first)
 
 uv run flake8 src api                    # lint (config in .flake8; E203/W503 ignored)
@@ -33,6 +35,8 @@ There is no test suite. `playwright` is a dev dependency used by the extract pha
 - **load** (`src/load.py`) — `init_db` creates the schema; `load_data` writes speakers/speeches; `load_ministers` writes minister tables.
 - **ministers** (`src/scrape_ministers.py`) — Scrapes German minister/role data from Wikipedia (CC BY-SA). Needed before finalize because the faction fallback references the ministers table.
 - **finalize** (`src/load.py::finalize_db`) — Materializes two derived columns the API reads on every request: `faction_normalized` (resolved party, via `FACTION_NORMALIZE_SQL`) and `search_text` (`lower(speech_content)`). This is a performance phase — it moves the faction CASE logic and `lower()` out of the per-query read path (~5× faster). Must run **after** both load and ministers.
+- **stammdaten** (`src/extract.py::download_stammdaten` + `src/stammdaten.py::build_registry`) — Downloads the official MdB-Stammdaten ZIP from bundestag.de (no bot protection, plain urllib), extracts `MDB_STAMMDATEN.XML`, and flattens it into two DuckDB tables: `politicians` (one row per name variant with `id, last_name, first_name, name_von, name_bis`) and `politician_terms` (one row per member/term with `id, electoral_term, faction`). Also creates the `_registry_names` view (canonical display name per member, newest-valid variant). The official 8-digit MdB IDs in the Stammdaten are the same namespace used by the modern term XML, so a member active across the 18/19 boundary gets one identity. Fully idempotent (re-entrant download, tables are DROPped and recreated). Must run **after finalize** so faction data is available to the matcher.
+- **legacy-match** (`src/match_legacy.py::match_legacy`) — Resolves `politician_id` for legacy speeches (terms 1–18) which the transform phase leaves at the sentinel `-1`. Uses a conservative tiered match against the Stammdaten registry: (1) unique surname in term, (2) surname + faction, (3) surname + first name, (4) surname + first initial — only assigns an ID when exactly one candidate survives. Broken-parse recovery swaps `last_name`/`first_name` when the surname field is punctuation or too short. Achieved ~97% coverage (686k/705k speeches) with zero forced assignments. Unresolved speakers are logged to `legacy_match_unresolved` table and a `.legacy_unresolved.csv` sidecar for audit. Idempotent (only updates rows where `politician_id = -1`). Must run **after stammdaten** (needs registry) and **after finalize** (needs `faction_normalized`).
 - **zwischenrufe** (`src/zwischenrufe.py`) — Extracts parliamentary interjections into a dedicated `zwischenrufe` table. Modern terms (19+): re-reads the XML and pulls `<kommentar>` elements (direct children of `<rede>`), which the main transform discards. Legacy terms (1–18): parses parenthetical remarks from the stored `speech_content`. Each segment is classified as `Zwischenruf` (attributed heckling with text + name + party), `Beifall`, `Heiterkeit`, `Lachen`, `Widerspruch`, `Zuruf`, or `Zustimmung`. Must run **after finalize** (needs `faction_normalized` for `target_speaker_party`). Idempotent per term (deletes then re-inserts). Query functions in `src/queries.py`: `query_zwischenrufe_timeline`, `query_top_zwischenrufer`, `query_zwischenrufe_by_caller_party`, `query_interruption_matrix`, `query_zwischenrufe_samples`.
 
 The two main tables are `speakers` (one row per politician) and `speeches` (one row per speech segment). The `zwischenrufe` table has one row per reaction segment with columns: `speech_id`, `electoral_term`, `session`, `date`, `target_speaker_id`, `target_speaker_party`, `type`, `caller_name`, `caller_party`, `text`, `raw`. See README.md for full column-level schema.

@@ -3,7 +3,7 @@
 
 Usage examples:
     uv run run.py --phase all
-    uv run run.py --phase extract --term 20
+    uv run run.py --phase extract --term 21
     uv run run.py --phase load --term 19 --db custom.db
 """
 
@@ -18,14 +18,15 @@ import click
     default="all",
     show_default=True,
     type=click.Choice(
-        ["extract", "transform", "load", "ministers", "finalize", "zwischenrufe", "all"],
+        ["extract", "transform", "load", "ministers", "finalize",
+         "stammdaten", "legacy-match", "zwischenrufe", "all"],
         case_sensitive=False,
     ),
     help="Pipeline phase to execute.",
 )
 @click.option(
     "--term",
-    default=20,
+    default=21,
     show_default=True,
     type=int,
     help="Wahlperiode (electoral term) to process.",
@@ -106,6 +107,29 @@ def main(
         from src.load import finalize_db
 
         finalize_db(db, text_table=text_table)
+
+    # ------------------------------------------------------------------
+    # STAMMDATEN: build the MdB registry (politicians + politician_terms)
+    # from the official master-data XML.  Term-independent.
+    # ------------------------------------------------------------------
+    if phase in ("stammdaten", "all"):
+        from src.extract import download_stammdaten
+        from src.stammdaten import build_registry
+        from src.load import init_db
+
+        init_db(db)
+        xml_path = download_stammdaten(data_path)
+        build_registry(db, xml_path)
+
+    # ------------------------------------------------------------------
+    # LEGACY-MATCH: resolve politician_id for legacy speeches (terms 1–18)
+    # against the registry.  Must run after finalize (needs
+    # faction_normalized) AND stammdaten (needs the registry tables).
+    # ------------------------------------------------------------------
+    if phase in ("legacy-match", "all"):
+        from src.match_legacy import match_legacy
+
+        match_legacy(db)
 
     # ------------------------------------------------------------------
     # ZWISCHENRUFE: extract interjections from XML / speech text
