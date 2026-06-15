@@ -7,9 +7,10 @@
 	let {
 		title,
 		subtitle,
+		description,
 		stats = [],
 		variant = 'default'
-	}: { title: string; subtitle: string; stats?: Stat[]; variant?: 'default' | 'warm' | 'gold' } = $props();
+	}: { title: string; subtitle: string; description?: string; stats?: Stat[]; variant?: 'default' | 'warm' | 'gold' } = $props();
 </script>
 
 <header class="page-hero" class:warm={variant === 'warm'} class:gold={variant === 'gold'}>
@@ -18,6 +19,9 @@
 		<div class="hero-text">
 			<h1 class="grad-text">{title}</h1>
 			<p class="hero-sub">{subtitle}</p>
+			{#if description}
+				<p class="hero-desc">{description}</p>
+			{/if}
 		</div>
 	</div>
 
@@ -106,6 +110,13 @@
 		font-size: 1rem;
 		margin: 0;
 		max-width: 52ch;
+	}
+	.hero-desc {
+		color: var(--ink-3);
+		font-size: 0.82rem;
+		margin: 0.2rem 0 0;
+		max-width: 68ch;
+		line-height: 1.6;
 	}
 	.hero-stats {
 		position: relative;
