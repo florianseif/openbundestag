@@ -60,8 +60,9 @@ _ZURUF_RE       = re.compile(r'^(?:Weitere\s+)?Zurufe?\b', re.IGNORECASE)
 _ZUSTIMMUNG_RE  = re.compile(r'^Zustimmung\b',             re.IGNORECASE)
 
 # Extracts the "bei …" portion of Beifall text to parse applauding parties.
-# Matches: "Beifall bei der SPD", "Beifall bei Abgeordneten der LINKEN", etc.
-_BEIFALL_BEI_RE = re.compile(r'Beifall\s+(?:im\s+ganzen\s+Hause|bei\s+(.+))$', re.IGNORECASE | re.DOTALL)
+# Matches: "Beifall bei der SPD", "Beifall beim BÜNDNIS 90/DIE GRÜNEN", etc.
+# "beim" is a contraction of "bei dem" and must be handled separately.
+_BEIFALL_BEI_RE = re.compile(r'Beifall\s+(?:im\s+ganzen\s+Hause|bei(?:m)?\s+(.+))$', re.IGNORECASE | re.DOTALL)
 
 # Tokeniser to split "der SPD und der FDP" into candidate party tokens.
 # Strips prepositions/articles so _match_faction sees the raw party name.

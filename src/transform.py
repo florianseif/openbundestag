@@ -21,6 +21,9 @@ import pandas as pd
 _FACTION_DIRECT: dict[str, str] = {
     "Bündnis 90/Die Grünen":   "Bündnis 90/Die Grünen",
     "BÜNDNIS 90/DIE GRÜNEN":   "Bündnis 90/Die Grünen",
+    "Grünen":                  "Bündnis 90/Die Grünen",
+    "Grüne":                   "Bündnis 90/Die Grünen",
+    "GRÜNE":                   "Bündnis 90/Die Grünen",
     "Die Linke":               "Die Linke",
     "DIE LINKE":               "Die Linke",
     "Fraktionslos":            "Fraktionslos",
