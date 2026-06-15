@@ -5,18 +5,16 @@
 	import type { ZwischenrufSample } from '$lib/types';
 
 	let {
-		initialParty = undefined,
-		initialTarget = undefined,
+		callerParty = '',
+		targetParty = '',
 		terms = undefined
 	}: {
-		initialParty?: string;
-		initialTarget?: string;
+		callerParty?: string;
+		targetParty?: string;
 		terms?: number[];
 	} = $props();
 
 	let keyword = $state('');
-	let callerParty = $state(initialParty ?? '');
-	let targetParty = $state(initialTarget ?? '');
 	let items = $state<ZwischenrufSample[]>([]);
 	let loading = $state(false);
 	let debounce: ReturnType<typeof setTimeout>;
