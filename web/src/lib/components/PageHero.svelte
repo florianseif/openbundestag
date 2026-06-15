@@ -7,11 +7,12 @@
 	let {
 		title,
 		subtitle,
-		stats = []
-	}: { title: string; subtitle: string; stats?: Stat[] } = $props();
+		stats = [],
+		variant = 'default'
+	}: { title: string; subtitle: string; stats?: Stat[]; variant?: 'default' | 'warm' } = $props();
 </script>
 
-<header class="page-hero">
+<header class="page-hero" class:warm={variant === 'warm'}>
 	<div class="hero-glow" aria-hidden="true"></div>
 	<div class="hero-top">
 		<div class="hero-text">
@@ -51,6 +52,20 @@
 		filter: blur(8px);
 		pointer-events: none;
 		z-index: 0;
+	}
+	.warm .hero-glow {
+		background: radial-gradient(
+			60% 100% at 20% 0%,
+			rgba(255, 90, 90, 0.18),
+			rgba(255, 140, 80, 0.09) 45%,
+			transparent 72%
+		);
+	}
+	.warm h1.grad-text {
+		background: linear-gradient(115deg, #ff6b6b 0%, #ff4e4e 42%, #ffb347 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
 	}
 	.hero-top {
 		position: relative;
