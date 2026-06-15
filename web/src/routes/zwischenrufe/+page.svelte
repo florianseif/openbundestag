@@ -163,7 +163,7 @@
 </svelte:head>
 
 <div class="wrap page">
-	<PageHero title={i18n.t('zw_title')} subtitle={i18n.t('zw_subtitle')} />
+	<PageHero title={i18n.t('zw_title')} subtitle={i18n.t('zw_subtitle')} variant="warm" />
 
 	{#if bootError}
 		<div class="alert glass">
