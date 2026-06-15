@@ -19,7 +19,7 @@
 		valueLabel: string;
 		selectedParties?: string[];
 		ontoggleparty?: (party: string) => void;
-		onpick?: (period: string, party: string) => void;
+		onpick?: (period: string, party?: string) => void;
 	} = $props();
 
 	let cw = $state(800);
@@ -143,7 +143,9 @@
 
 	function onclick() {
 		if (!hoverRows || !hoverRows.items.length) return;
-		onpick?.(hoverRows.period, hoverRows.items[0].party);
+		// Click anywhere on the chart drills into ALL parties at that period;
+		// clicking a specific party dot (below) still drills into that one party.
+		onpick?.(hoverRows.period);
 	}
 
 	const uid = Math.random().toString(36).slice(2, 8);
