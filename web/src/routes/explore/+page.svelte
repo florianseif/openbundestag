@@ -187,13 +187,17 @@
 	// --- drill-down -----------------------------------------------------------
 	let flipped = $state(false);
 	let drill = $state<{ q: Filters; title: string } | null>(null);
-	function pick(period: string, party: string) {
+	function pick(period: string, party?: string) {
 		const start = new Date(period);
 		const end = new Date(start);
 		end.setMonth(end.getMonth() + 3);
+		// A specific party dot drills into that party; a click anywhere keeps the
+		// active legend filter (filters.parties) so it shows all visible parties.
+		const parties = party ? [party] : filters.parties;
+		const label = party ?? (parties.length ? parties.join(', ') : i18n.t('all_parties'));
 		drill = {
-			q: { ...filters, politician_id: polId, parties: [party], date_from: period, date_to: end.toISOString().slice(0, 10) },
-			title: `${party} · ${period.slice(0, 7)}`
+			q: { ...filters, politician_id: polId, parties, date_from: period, date_to: end.toISOString().slice(0, 10) },
+			title: `${label} · ${period.slice(0, 7)}`
 		};
 	}
 
