@@ -189,7 +189,7 @@
 		width: 100%;
 		display: grid;
 		grid-template-columns: 6.5rem 1fr auto auto;
-		grid-template-rows: auto auto;
+		grid-template-rows: auto auto auto;
 		column-gap: 0.75rem;
 		row-gap: 0.2rem;
 		align-items: baseline;
@@ -246,8 +246,9 @@
 		color: var(--ink-3);
 	}
 	.snip {
-		grid-row: 2;
-		grid-column: 2 / 5;
+		grid-row: 3;
+		grid-column: 1 / 5;
+		margin-top: 0.15rem;
 		font-size: 0.78rem;
 		color: var(--ink-2);
 		line-height: 1.5;
@@ -329,6 +330,6 @@
 			grid-template-columns: 5.5rem 1fr auto;
 		}
 		.party { display: none; }
-		.snip { grid-column: 2 / 4; }
+		.snip { grid-column: 1 / 4; }
 	}
 </style>
