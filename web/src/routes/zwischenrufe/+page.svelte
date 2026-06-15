@@ -13,6 +13,7 @@
 		ZwischenrufCallerCount,
 		ZwischenrufPartyCount,
 		ZwischenrufMatrixRow,
+		ZwischenrufSample,
 		TermInfo
 	} from '$lib/types';
 
@@ -25,10 +26,48 @@
 	let loading = $state(true);
 	let bootError = $state<string | null>(null);
 
-	let callerPartyFilter = $state('');
-	let targetPartyFilter = $state('');
 	let terms = $state<number[]>([21]);
 	let activeView = $state<'matrix' | 'parties' | 'callers' | 'feed'>('matrix');
+
+	// ── politician search (matrix panel only) ─────────────────────────────────
+	let callerNameSearch = $state('');
+	let callerSamples = $state<ZwischenrufSample[]>([]);
+	let callerSamplesLoading = $state(false);
+	let callerSamplesDebounce: ReturnType<typeof setTimeout>;
+
+	$effect(() => {
+		const name = callerNameSearch.trim();
+		void terms;
+		if (!name || !meta?.available) { callerSamples = []; return; }
+		clearTimeout(callerSamplesDebounce);
+		callerSamplesDebounce = setTimeout(async () => {
+			callerSamplesLoading = true;
+			try {
+				callerSamples = await api.zwischenrufe.samples({ callerName: name, terms, limit: 500 });
+			} finally {
+				callerSamplesLoading = false;
+			}
+		}, 350);
+	});
+
+	const callerTargetBars = $derived((() => {
+		if (!callerSamples.length) return [];
+		const totals = new Map<string, number>();
+		for (const s of callerSamples) {
+			if (s.target_speaker_party) {
+				totals.set(s.target_speaker_party, (totals.get(s.target_speaker_party) ?? 0) + 1);
+			}
+		}
+		return [...totals.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.map(([party, n]) => ({ label: party, value: n, color: partyColor(party) }));
+	})());
+
+	const callerInfo = $derived(
+		callerSamples.length > 0
+			? { name: callerSamples[0].caller_name, party: callerSamples[0].caller_party }
+			: null
+	);
 
 	// ── boot ──────────────────────────────────────────────────────────────────
 	async function boot() {
@@ -45,7 +84,6 @@
 			loading = false;
 			return;
 		}
-		// Electoral-term list (with labels) for the Wahlperiode filter bar.
 		api.meta().then((m) => (termOptions = m.terms)).catch(() => {});
 		await reload();
 		loading = false;
@@ -53,9 +91,8 @@
 
 	async function reload() {
 		const t = terms;
-		const cp = callerPartyFilter || undefined;
 		const [tc, bp, mx] = await Promise.allSettled([
-			api.zwischenrufe.topCallers('Zwischenruf', t, cp, 20),
+			api.zwischenrufe.topCallers('Zwischenruf', t, undefined, 20),
 			api.zwischenrufe.byParty('Zwischenruf', t),
 			api.zwischenrufe.matrix('Zwischenruf', t)
 		]);
@@ -70,47 +107,20 @@
 
 	let debounce: ReturnType<typeof setTimeout>;
 	$effect(() => {
-		void callerPartyFilter; void terms;
+		void terms;
 		if (!meta?.available) return;
 		clearTimeout(debounce);
 		debounce = setTimeout(reload, 200);
 	});
 
 	// ── derived ───────────────────────────────────────────────────────────────
-	// Unattributable parties surface as "?" in the matrix; drop them everywhere.
 	const isRealParty = (p: string | null | undefined): p is string =>
 		!!p && p !== 'Unknown';
 
-	const callerPartyOptions = $derived(
-		[...byParty]
-			.sort((a, b) => partyFoundingOrder(a.caller_party) - partyFoundingOrder(b.caller_party))
-			.map((p) => p.caller_party)
-	);
-
-	const targetPartyOptions = $derived(
-		[...new Set(
-			matrix
-				.filter((r) => isRealParty(r.target_speaker_party))
-				.map((r) => r.target_speaker_party!)
-		)].sort((a, b) => partyFoundingOrder(a) - partyFoundingOrder(b))
-	);
-
 	const visibleTopCallers = $derived(topCallers);
-
-	const visibleByParty = $derived(
-		callerPartyFilter
-			? byParty.filter((p) => p.caller_party === callerPartyFilter)
-			: byParty
-	);
-
+	const visibleByParty = $derived(byParty);
 	const visibleMatrix = $derived(
-		matrix.filter(
-			(r) =>
-				isRealParty(r.caller_party) &&
-				isRealParty(r.target_speaker_party) &&
-				(!callerPartyFilter || r.caller_party === callerPartyFilter) &&
-				(!targetPartyFilter || r.target_speaker_party === targetPartyFilter)
-		)
+		matrix.filter((r) => isRealParty(r.caller_party) && isRealParty(r.target_speaker_party))
 	);
 
 	const callerBars = $derived(
@@ -132,7 +142,6 @@
 			}))
 	);
 
-	// Stat cards derived from data
 	const topCaller = $derived(visibleTopCallers[0] ?? null);
 	const topCallerParty = $derived(visibleByParty[0] ?? null);
 	const topTarget = $derived(
@@ -178,10 +187,7 @@
 				<span class="m-cap">{i18n.t('zw_total')}</span>
 			</div>
 			{#if topCaller}
-				<div
-					class="metric glass"
-					style:--lc={partyColor(topCaller.caller_party)}
-				>
+				<div class="metric glass" style:--lc={partyColor(topCaller.caller_party)}>
 					<span class="m-num small lead">
 						<span class="lead-dot"></span>
 						{topCaller.caller_name}
@@ -213,37 +219,11 @@
 		</div>
 
 		<!-- ── Filters ────────────────────────────────────────────────────── -->
-		<div class="filter-bar glass">
-			<div class="filter-row">
-				{#if callerPartyOptions.length}
-					<label class="filter-group">
-						<span class="filter-label">{i18n.t('zw_filter_caller')}</span>
-						<select bind:value={callerPartyFilter} class="sel">
-							<option value="">{i18n.t('all_parties')}</option>
-							{#each callerPartyOptions as p}
-								<option value={p}>{p}</option>
-							{/each}
-						</select>
-					</label>
-				{/if}
-				{#if targetPartyOptions.length}
-					<label class="filter-group">
-						<span class="filter-label">{i18n.t('zw_filter_target')}</span>
-						<select bind:value={targetPartyFilter} class="sel">
-							<option value="">{i18n.t('all_parties')}</option>
-							{#each targetPartyOptions as p}
-								<option value={p}>{p}</option>
-							{/each}
-						</select>
-					</label>
-				{/if}
+		{#if termOptions.length}
+			<div class="filter-bar glass">
+				<TermFilter bind:selected={terms} options={termOptions} />
 			</div>
-			{#if termOptions.length}
-				<div class="filter-terms">
-					<TermFilter bind:selected={terms} options={termOptions} />
-				</div>
-			{/if}
-		</div>
+		{/if}
 
 		<!-- ── Adventure tabs ────────────────────────────────────────────── -->
 		<div class="adventure-tabs" role="tablist">
@@ -351,11 +331,45 @@
 						<h3>{i18n.t('zw_matrix_title')}</h3>
 						<p class="p-hint">{i18n.t('zw_matrix_hint')}</p>
 					</div>
+					<div class="p-search-wrap">
+						<svg class="p-search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+							<circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.4"/>
+							<line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+						</svg>
+						<input
+							class="p-search"
+							type="search"
+							placeholder="Person suchen…"
+							bind:value={callerNameSearch}
+						/>
+					</div>
 				</header>
-				{#if visibleMatrix.length}
-					<InterruptionMatrix rows={visibleMatrix} />
+
+				{#if callerNameSearch.trim()}
+					{#if callerSamplesLoading}
+						<div class="spotlight-loading"><span class="pulse-dot"></span></div>
+					{:else if callerTargetBars.length}
+						<div class="spotlight">
+							{#if callerInfo}
+								<p class="spotlight-meta">
+									<span class="spotlight-name">{callerInfo.name}</span>
+									{#if callerInfo.party}
+										<span class="spotlight-party" style:background={partyColor(callerInfo.party)}>{callerInfo.party}</span>
+									{/if}
+									<span class="spotlight-count">unterbrach {callerSamples.length}× die…</span>
+								</p>
+							{/if}
+							<HBars bars={callerTargetBars} valueLabel={i18n.t('zw_calls')} />
+						</div>
+					{:else}
+						<p class="empty">{i18n.t('zw_no_results')}</p>
+					{/if}
 				{:else}
-					<p class="empty">—</p>
+					{#if visibleMatrix.length}
+						<InterruptionMatrix rows={visibleMatrix} />
+					{:else}
+						<p class="empty">—</p>
+					{/if}
 				{/if}
 			</section>
 		{:else if activeView === 'parties'}
@@ -381,7 +395,7 @@
 				<header class="p-head">
 					<h3>{i18n.t('zw_feed_title')}</h3>
 				</header>
-				<ZwischenrufFeed {terms} callerParty={callerPartyFilter} targetParty={targetPartyFilter} />
+				<ZwischenrufFeed {terms} />
 			</section>
 		{/if}
 	{/if}
@@ -482,49 +496,8 @@
 
 	/* ── Filter bar ── */
 	.filter-bar {
-		display: flex;
-		flex-direction: column;
-		gap: 0;
-		padding: 0.95rem 1.2rem;
+		padding: 0.75rem 1.2rem;
 	}
-	.filter-row {
-		display: flex;
-		gap: 1.1rem;
-		flex-wrap: wrap;
-		align-items: center;
-	}
-	.filter-group {
-		display: flex;
-		align-items: center;
-		gap: 0.55rem;
-	}
-	.filter-terms {
-		min-width: 0;
-		padding-top: 0.85rem;
-		margin-top: 0.85rem;
-		border-top: 1px solid var(--line);
-	}
-	.filter-label {
-		font-size: 0.78rem;
-		font-weight: 600;
-		color: var(--ink-3);
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		white-space: nowrap;
-	}
-	.sel {
-		background: var(--surface-2);
-		border: 1px solid var(--line-2);
-		border-radius: 8px;
-		color: var(--ink);
-		font: inherit;
-		font-size: 0.85rem;
-		padding: 0.35rem 0.7rem;
-		outline: none;
-		cursor: pointer;
-		transition: border-color 0.2s;
-	}
-	.sel:focus { border-color: var(--accent); }
 
 	/* ── Adventure tabs ── */
 	.adventure-tabs {
@@ -639,6 +612,77 @@
 		color: var(--ink-3);
 	}
 
+	/* ── Panel politician search ── */
+	.p-search-wrap {
+		position: relative;
+		flex-shrink: 0;
+	}
+	.p-search-icon {
+		position: absolute;
+		left: 0.75rem;
+		top: 50%;
+		transform: translateY(-50%);
+		color: var(--ink-3);
+		pointer-events: none;
+	}
+	.p-search {
+		padding: 0.45rem 0.85rem 0.45rem 2.2rem;
+		background: var(--surface-2);
+		border: 1px solid var(--line-2);
+		border-radius: 999px;
+		color: var(--ink);
+		font: inherit;
+		font-size: 0.85rem;
+		width: 18rem;
+		outline: none;
+		transition: border-color 0.2s, box-shadow 0.2s;
+	}
+	.p-search:focus {
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px rgba(107, 145, 255, 0.15);
+	}
+	.p-search::placeholder { color: var(--ink-3); }
+
+	/* ── Politician spotlight ── */
+	.spotlight-loading {
+		display: flex;
+		justify-content: center;
+		padding: 2rem;
+	}
+	.pulse-dot {
+		width: 10px; height: 10px;
+		border-radius: 50%;
+		background: var(--accent);
+		animation: pulse 1.4s ease infinite;
+	}
+	@keyframes pulse {
+		0% { box-shadow: 0 0 0 0 rgba(107, 145, 255, 0.55); }
+		70% { box-shadow: 0 0 0 10px rgba(107, 145, 255, 0); }
+		100% { box-shadow: 0 0 0 0 rgba(107, 145, 255, 0); }
+	}
+	.spotlight-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		margin: 0 0 1rem;
+		font-size: 0.85rem;
+	}
+	.spotlight-name {
+		font-weight: 700;
+		color: var(--ink);
+	}
+	.spotlight-party {
+		font-size: 0.7rem;
+		font-weight: 700;
+		padding: 0.15rem 0.5rem;
+		border-radius: 999px;
+		color: #fff;
+	}
+	.spotlight-count {
+		color: var(--ink-3);
+	}
+
 	.empty {
 		color: var(--ink-3);
 		text-align: center;
@@ -667,9 +711,12 @@
 		.metrics { grid-template-columns: repeat(2, 1fr); }
 		.adventure-tabs { grid-template-columns: repeat(2, 1fr); }
 	}
+	@media (max-width: 640px) {
+		.p-search { width: 100%; }
+		.p-head { flex-direction: column; }
+	}
 	@media (max-width: 540px) {
 		.metrics { grid-template-columns: 1fr; }
 		.adventure-tabs { grid-template-columns: 1fr; }
-		.filter-row { flex-direction: column; align-items: flex-start; }
 	}
 </style>
