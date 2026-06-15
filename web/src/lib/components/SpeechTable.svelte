@@ -108,7 +108,7 @@
 						<span class="party" style:color={partyColor(s.party)}>{s.party}</span>
 						<span class="role">{s.position_long ?? s.position_short}</span>
 						{#if s.snippet}
-							<span class="snip">…{#each segs(s.snippet.slice(0, 120)) as seg}{#if seg.hit}<mark>{seg.t}</mark>{:else}{seg.t}{/if}{/each}…</span>
+							<span class="snip">…{#each segs(s.snippet) as seg}{#if seg.hit}<mark>{seg.t}</mark>{:else}{seg.t}{/if}{/each}…</span>
 						{/if}
 						<span class="chev" class:up={openId === s.id}>⌄</span>
 					</button>
@@ -252,9 +252,11 @@
 		font-size: 0.78rem;
 		color: var(--ink-2);
 		line-height: 1.5;
-		white-space: nowrap;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
 		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 	mark {
 		background: linear-gradient(180deg, transparent 55%, rgba(255, 206, 92, 0.45) 55%);
