@@ -152,9 +152,17 @@ def match_legacy(db_path: str | Path) -> None:
 
         index = _build_registry_index(con)
 
+        # Use faction_normalized if finalize has been run, otherwise fall back
+        # to the raw faction column so legacy-match works in any phase order.
+        has_normalized = bool(con.execute(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'speeches' AND column_name = 'faction_normalized'"
+        ).fetchone())
+        faction_col = "faction_normalized" if has_normalized else "faction"
+
         keys = con.execute(
-            """
-            SELECT electoral_term, last_name, first_name, faction_normalized,
+            f"""
+            SELECT electoral_term, last_name, first_name, {faction_col} AS faction_normalized,
                    COUNT(*) AS speeches
             FROM speeches
             WHERE electoral_term <= 18 AND politician_id = -1
@@ -193,14 +201,14 @@ def match_legacy(db_path: str | Path) -> None:
             "CREATE TABLE _legacy_id_map AS SELECT * FROM matched"
         )
         con.execute(
-            """
+            f"""
             UPDATE speeches s
             SET politician_id = m.matched_id
             FROM _legacy_id_map m
             WHERE s.electoral_term = m.electoral_term
               AND s.last_name IS NOT DISTINCT FROM m.last_name
               AND s.first_name IS NOT DISTINCT FROM m.first_name
-              AND s.faction_normalized IS NOT DISTINCT FROM m.faction_normalized
+              AND s.{faction_col} IS NOT DISTINCT FROM m.faction_normalized
               AND s.politician_id = -1
             """
         )
