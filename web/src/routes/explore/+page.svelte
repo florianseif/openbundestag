@@ -3,7 +3,7 @@
 	import { replaceState } from '$app/navigation';
 	import { fade } from 'svelte/transition';
 	import { api, ApiError } from '$lib/api';
-	import { setPartyMeta } from '$lib/format';
+	import { setPartyMeta, partyFoundingOrder } from '$lib/format';
 	import { i18n } from '$lib/i18n.svelte';
 	import { partyColor } from '$lib/format';
 	import type {
@@ -199,7 +199,7 @@
 
 	// --- derived views --------------------------------------------------------
 	const cleanParties = $derived(
-		byParty.filter((d) => d.party !== 'Unknown').sort((a, b) => b.speeches - a.speeches)
+		byParty.filter((d) => d.party !== 'Unknown').sort((a, b) => partyFoundingOrder(a.party) - partyFoundingOrder(b.party))
 	);
 const partyBars = $derived(
 		cleanParties.map((d) => ({ label: d.party, value: d.speeches, color: partyColor(d.party) }))
