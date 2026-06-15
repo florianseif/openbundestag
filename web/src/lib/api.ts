@@ -22,7 +22,9 @@ import type {
 	ZwischenrufCallerCount,
 	ZwischenrufPartyCount,
 	ZwischenrufMatrixRow,
-	ZwischenrufSample
+	ZwischenrufSample,
+	BeifallMeta,
+	BeifallSelfOther
 } from './types';
 
 const BASE = (PUBLIC_API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '');
@@ -170,6 +172,28 @@ export const api = {
 			for (const t of opts.terms ?? []) p.append('terms', String(t));
 			if (opts.limit) p.set('limit', String(opts.limit));
 			return get<ZwischenrufSample[]>(`/api/zwischenrufe/samples?${p}`, fetcher);
+		}
+	},
+
+	beifall: {
+		meta: (fetcher?: FetchLike) => get<BeifallMeta>('/api/beifall/meta', fetcher),
+
+		byParty: (terms?: number[], fetcher?: FetchLike) => {
+			const p = new URLSearchParams();
+			for (const t of terms ?? []) p.append('terms', String(t));
+			return get<ZwischenrufPartyCount[]>(`/api/beifall/by-party?${p}`, fetcher);
+		},
+
+		matrix: (terms?: number[], fetcher?: FetchLike) => {
+			const p = new URLSearchParams();
+			for (const t of terms ?? []) p.append('terms', String(t));
+			return get<ZwischenrufMatrixRow[]>(`/api/beifall/matrix?${p}`, fetcher);
+		},
+
+		selfVsOther: (terms?: number[], fetcher?: FetchLike) => {
+			const p = new URLSearchParams();
+			for (const t of terms ?? []) p.append('terms', String(t));
+			return get<BeifallSelfOther[]>(`/api/beifall/self-vs-other?${p}`, fetcher);
 		}
 	}
 };

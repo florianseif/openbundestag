@@ -7,6 +7,7 @@
 	let { children } = $props();
 	const onWortsuche = $derived(page.url.pathname.startsWith('/explore'));
 	const onZwischenrufe = $derived(page.url.pathname.startsWith('/zwischenrufe'));
+	const onBeifall = $derived(page.url.pathname.startsWith('/beifall'));
 	const onAbout = $derived(page.url.pathname.startsWith('/about'));
 </script>
 
@@ -52,6 +53,16 @@
 			>
 				<span class="pill-dot" aria-hidden="true"></span>
 				{i18n.t('nav_zwischenrufe')}
+			</a>
+
+			<a
+				class="nav-pill"
+				class:active={onBeifall}
+				href="/beifall"
+				style="--pill-color: var(--gold)"
+			>
+				<span class="pill-dot" aria-hidden="true"></span>
+				{i18n.t('nav_beifall')}
 			</a>
 
 			<a

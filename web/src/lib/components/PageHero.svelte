@@ -9,10 +9,10 @@
 		subtitle,
 		stats = [],
 		variant = 'default'
-	}: { title: string; subtitle: string; stats?: Stat[]; variant?: 'default' | 'warm' } = $props();
+	}: { title: string; subtitle: string; stats?: Stat[]; variant?: 'default' | 'warm' | 'gold' } = $props();
 </script>
 
-<header class="page-hero" class:warm={variant === 'warm'}>
+<header class="page-hero" class:warm={variant === 'warm'} class:gold={variant === 'gold'}>
 	<div class="hero-glow" aria-hidden="true"></div>
 	<div class="hero-top">
 		<div class="hero-text">
@@ -63,6 +63,20 @@
 	}
 	.warm h1.grad-text {
 		background: linear-gradient(115deg, #ff6b6b 0%, #ff4e4e 42%, #ffb347 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+	}
+	.gold .hero-glow {
+		background: radial-gradient(
+			60% 100% at 20% 0%,
+			rgba(255, 206, 92, 0.22),
+			rgba(255, 142, 60, 0.10) 45%,
+			transparent 72%
+		);
+	}
+	.gold h1.grad-text {
+		background: linear-gradient(115deg, #ffce5c 0%, #ffaa2a 45%, #ff8e3c 100%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
