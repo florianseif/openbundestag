@@ -26,7 +26,11 @@ _BUNDESLAENDER_SQL = ", ".join(f"'{s}'" for s in _BUNDESLAENDER)
 # ---------------------------------------------------------------------------
 # Resolves the party/faction for every speech.  For speeches that carry no
 # faction tag in the XML (≈55% of rows, mostly ministers and legacy terms) it
-# falls back to the ministers table and to other speeches by the same person.
+# falls back, in order, to: the ministers table, other speeches by the same
+# person (their own declared faction — kept first so era-correct labels such as
+# PDS are not overwritten by the registry's modern "Die Linke"), a name-based
+# lookup, and finally the official MdB-Stammdaten registry (politician_terms),
+# which recovers session chairs and others whose speeches never carry a faction.
 #
 # Each LIMIT-1 subquery carries an explicit ORDER BY so the result is
 # DETERMINISTIC and reproducible — without it DuckDB's parallel scan order can
@@ -39,14 +43,22 @@ FACTION_NORMALIZE_SQL = f"""
     CASE
         WHEN faction IS NULL OR trim(faction) = ''
             THEN COALESCE(
-                -- 1. name match in ministers table — exact or first-token match
-                (SELECT m.party FROM ministers m
-                 WHERE LOWER(m.full_name) = LOWER(trim(s.first_name) || ' ' || s.last_name)
-                    OR (LOWER(m.last_name) = LOWER(s.last_name)
-                        AND LOWER(trim(s.first_name)) LIKE LOWER(m.first_name) || '%')
-                 ORDER BY m.full_name
-                 LIMIT 1),
-                -- 2. cross-reference by politician_id (modern terms, stable IDs)
+                -- 1. name match in ministers table — exact or first-token match.
+                --    NULLIF guards against scraped ministers with an empty party
+                --    (e.g. Steffi Lemke), so the empty string does not short-
+                --    circuit COALESCE and we fall through to the steps below.
+                NULLIF(trim(
+                    (SELECT m.party FROM ministers m
+                     WHERE LOWER(m.full_name) = LOWER(trim(s.first_name) || ' ' || s.last_name)
+                        OR (LOWER(m.last_name) = LOWER(s.last_name)
+                            AND LOWER(trim(s.first_name)) LIKE LOWER(m.first_name) || '%')
+                     ORDER BY m.full_name
+                     LIMIT 1)
+                ), ''),
+                -- 2. cross-reference by politician_id (modern terms, stable IDs).
+                --    Prefer the faction the speaker actually declared in their
+                --    own speeches over the registry, so era-correct labels
+                --    (e.g. PDS before the 2007 rename to Die Linke) are kept.
                 (SELECT s2.faction FROM speeches s2
                  WHERE s2.politician_id = s.politician_id
                    AND s2.politician_id != -1
@@ -59,6 +71,18 @@ FACTION_NORMALIZE_SQL = f"""
                    AND LOWER(trim(s3.first_name)) LIKE LOWER(split_part(trim(s.first_name), ' ', 1)) || '%'
                    AND s3.faction IS NOT NULL AND trim(s3.faction) != ''
                  ORDER BY s3.date, s3.id
+                 LIMIT 1),
+                -- 4. official MdB-Stammdaten registry, term-specific. Resolves
+                --    session chairs (Vize-/Präsidenten) and other members whose
+                --    speeches never carry a faction tag. This single fallback
+                --    recovers ~13k otherwise-Unknown speeches (term 12 alone:
+                --    ~11k, dominated by Vizepräsident Cronenberg / Becker).
+                (SELECT pt.faction FROM politician_terms pt
+                 WHERE pt.id = s.politician_id
+                   AND s.politician_id != -1
+                   AND pt.electoral_term = s.electoral_term
+                   AND pt.faction IS NOT NULL AND trim(pt.faction) != ''
+                 ORDER BY pt.faction
                  LIMIT 1),
                 'Unknown'
             )
@@ -80,6 +104,14 @@ FACTION_NORMALIZE_SQL = f"""
                AND LOWER(trim(s3.first_name)) LIKE LOWER(split_part(trim(s.first_name), ' ', 1)) || '%'
                AND s3.faction IS NOT NULL AND trim(s3.faction) != ''
              ORDER BY s3.date, s3.id
+             LIMIT 1),
+            -- Final fallback to the official MdB-Stammdaten registry
+            (SELECT pt.faction FROM politician_terms pt
+             WHERE pt.id = s.politician_id
+               AND s.politician_id != -1
+               AND pt.electoral_term = s.electoral_term
+               AND pt.faction IS NOT NULL AND trim(pt.faction) != ''
+             ORDER BY pt.faction
              LIMIT 1),
             'Unknown'
         )
@@ -278,6 +310,7 @@ def finalize_db(
     """
     with duckdb.connect(str(db_path)) as conn:
         _delete_guests(conn, db_path)
+        _backfill_missing_names(conn)
 
         conn.execute("ALTER TABLE speeches ADD COLUMN IF NOT EXISTS faction_normalized VARCHAR")
         conn.execute(f"UPDATE speeches s SET faction_normalized = ({FACTION_NORMALIZE_SQL})")
@@ -340,6 +373,38 @@ def _delete_guests(
     conn.execute(
         f"DELETE FROM speeches WHERE trim(faction) IN ({_BUNDESLAENDER_SQL})"
     )
+
+
+def _backfill_missing_names(conn: duckdb.DuckDBPyConnection) -> None:
+    """Fill in blank speaker names from the speakers table.
+
+    A handful of modern speeches resolve to a stable politician_id but lose
+    their first/last name during XML parsing (e.g. Albert Weiler, term 19).
+    The canonical name lives in the speakers table keyed by that same id, so we
+    copy it back. Idempotent: only touches rows whose name is currently empty.
+    """
+    affected = conn.execute(
+        """
+        SELECT COUNT(*) FROM speeches s JOIN speakers k ON k.id = s.politician_id
+        WHERE s.politician_id != -1
+          AND (s.last_name IS NULL OR trim(s.last_name) = '')
+          AND trim(COALESCE(k.last_name, '')) != ''
+        """
+    ).fetchone()[0]
+    if affected:
+        conn.execute(
+            """
+            UPDATE speeches s
+            SET first_name = k.first_name,
+                last_name  = k.last_name
+            FROM speakers k
+            WHERE k.id = s.politician_id
+              AND s.politician_id != -1
+              AND (s.last_name IS NULL OR trim(s.last_name) = '')
+              AND trim(COALESCE(k.last_name, '')) != ''
+            """
+        )
+    print(f"[finalize] Backfilled {affected} blank speaker name(s) from speakers", flush=True)
 
 
 def _log_unknown_speakers(
