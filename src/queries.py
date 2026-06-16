@@ -476,6 +476,133 @@ def total(
 
 
 # ---------------------------------------------------------------------------
+# Combined search — one scan, all explorer views
+# ---------------------------------------------------------------------------
+def search(
+    con: duckdb.DuckDBPyConnection,
+    word: str,
+    parties: list[str],
+    terms: list[int],
+    politician_id: int | None,
+    granularity: str,
+    count_mode: str,
+    top_n: int = 15,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    """Compute total + timeline + by-party + by-term + top-politicians in a
+    SINGLE text scan, instead of the four independent ``LIKE`` scans the
+    explorer used to fire in parallel.
+
+    The keyword filter (the only expensive part — a substring scan over the
+    ~1.8 GB ``search_text`` column) runs once and lands in a per-cursor TEMP
+    table; every view then aggregates that small matched set in microseconds.
+
+    ``politician_id`` mirrors the explorer's behaviour: it narrows *total* and
+    *timeline* only (the MP's own activity), while *by_party* and
+    *top_politicians* always reflect the whole keyword (the matched set keeps
+    ``politician_id`` so both derive from the one scan). Results are identical
+    to calling :func:`total`, :func:`timeline`, :func:`by_party`,
+    :func:`by_term` and :func:`top_politicians` separately.
+    """
+    where, where_params = build_conditions(
+        word, parties, terms, None, date_from, date_to,
+        extra=[f"{FACTION_COL} != 'Unknown'"],
+    )
+
+    occurrences = count_mode == "occurrences"
+    lo = word.lower()
+    if occurrences:
+        occ_select = f", (len({SEARCH_COL}) - len(replace({SEARCH_COL}, ?, ''))) / ? AS occ"
+        matched_params: list = [lo, max(len(lo), 1)] + where_params
+    else:
+        occ_select = ""
+        matched_params = where_params
+
+    con.execute(
+        f"""
+        CREATE OR REPLACE TEMP TABLE _search_matched AS
+        SELECT id, {FACTION_COL} AS party, date, electoral_term AS term,
+               politician_id, first_name, last_name{occ_select}
+        FROM speeches
+        WHERE {where}
+        """,
+        matched_params,
+    )
+
+    # total + timeline honour the optional MP filter; the others never do.
+    pid_where, pid_params = "", []
+    if politician_id is not None:
+        pid_where, pid_params = " WHERE politician_id = ?", [int(politician_id)]
+
+    total_row = con.execute(
+        f"SELECT COUNT(*), MIN(date), MAX(date) FROM _search_matched{pid_where}",
+        pid_params,
+    ).fetchone()
+    total = (
+        {"count": total_row[0], "min_date": total_row[1], "max_date": total_row[2]}
+        if total_row else {"count": 0, "min_date": None, "max_date": None}
+    )
+
+    trunc = "month" if granularity == "Monthly" else "quarter"
+    value_expr = "SUM(occ)" if occurrences else "COUNT(*)"
+    timeline = con.execute(
+        f"""
+        SELECT date_trunc('{trunc}', date)::DATE AS period, party, {value_expr} AS value
+        FROM _search_matched{pid_where}
+        GROUP BY period, party
+        ORDER BY period, party
+        """,
+        pid_params,
+    ).fetchdf()
+
+    by_party = con.execute(
+        """
+        SELECT party, COUNT(*) AS speeches
+        FROM _search_matched
+        GROUP BY party
+        ORDER BY speeches DESC, party
+        """
+    ).fetchdf()
+
+    by_term = con.execute(
+        """
+        SELECT term AS term, COUNT(*) AS speeches
+        FROM _search_matched
+        GROUP BY term
+        ORDER BY term
+        """
+    ).fetchdf()
+
+    if _has_registry(con):
+        name_expr = "COALESCE(reg.name, m.first_name || ' ' || m.last_name)"
+        join = "LEFT JOIN _registry_names reg ON reg.id = m.politician_id"
+    else:
+        name_expr = "m.first_name || ' ' || m.last_name"
+        join = ""
+    top_politicians = con.execute(
+        f"""
+        SELECT {name_expr} AS politician, m.party AS party, COUNT(*) AS speeches
+        FROM _search_matched m
+        {join}
+        WHERE m.politician_id != -1 AND m.last_name != ''
+        GROUP BY m.politician_id, politician, party
+        ORDER BY speeches DESC, politician
+        LIMIT ?
+        """,
+        [int(top_n)],
+    ).fetchdf()
+
+    return {
+        "total": total,
+        "timeline": timeline,
+        "by_party": by_party,
+        "by_term": by_term,
+        "top_politicians": top_politicians,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Drill-down (matched speech segments + full speech)
 # ---------------------------------------------------------------------------
 def speeches(

@@ -133,19 +133,19 @@
 		}
 		loading = true;
 		queryError = null;
-		const pf = { ...f, politician_id: pid };
-		const [tot, tl, bp, tp] = await Promise.allSettled([
-			api.total(pf),
-			api.timeline(pf),
-			api.byParty(f),
-			api.topPoliticians(f, n)
-		]);
-		if (tot.status === 'fulfilled') total = tot.value;
-		if (tl.status === 'fulfilled') timeline = tl.value;
-		if (bp.status === 'fulfilled') byParty = bp.value;
-		if (tp.status === 'fulfilled') top = tp.value;
-		const failed = [tot, tl, bp, tp].find((r) => r.status === 'rejected');
-		queryError = failed ? (failed.reason as ApiError).message : null;
+		// One request → one text scan on the API → total + timeline + by-party +
+		// top-speakers. politician_id narrows total+timeline only (the server
+		// keeps by-party/top whole-keyword), matching the old four-call split.
+		try {
+			const res = await api.search({ ...f, politician_id: pid }, n);
+			total = res.total;
+			timeline = res.timeline;
+			byParty = res.by_party;
+			top = res.top_politicians;
+			queryError = null;
+		} catch (e) {
+			queryError = (e as ApiError).message;
+		}
 		loading = false;
 	}
 

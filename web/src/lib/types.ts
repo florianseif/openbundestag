@@ -52,6 +52,15 @@ export interface Politician {
 	speeches: number;
 }
 
+// Combined explorer payload (/api/search): all four panels from one text scan.
+export interface SearchResult {
+	total: Totals;
+	timeline: TimelinePoint[];
+	by_party: PartyCount[];
+	by_term: TermCount[];
+	top_politicians: PoliticianCount[];
+}
+
 export interface SpeechItem {
 	id: number;
 	session: string;
