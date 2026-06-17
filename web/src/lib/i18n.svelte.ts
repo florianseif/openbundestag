@@ -73,6 +73,14 @@ export const STRINGS: Dict = {
 	},
 	no_results_title: { de: 'Stille im Plenum', en: 'Silence in the chamber' },
 	try_instead: { de: 'Versuch stattdessen', en: 'Try instead' },
+	cmp_add: { de: 'Wort vergleichen', en: 'Compare a word' },
+	cmp_ph: { de: 'Zweites Wort…', en: 'Second word…' },
+	cmp_clear: { de: 'Vergleich entfernen', en: 'Remove comparison' },
+	cmp_exit: { de: 'Vergleich beenden', en: 'Exit comparison' },
+	cmp_hint: {
+		de: 'Zwei Begriffe im direkten Vergleich — Gesamtnennungen pro Zeitraum.',
+		en: 'Two terms head-to-head — total mentions per period.'
+	},
 	enter_keyword: {
 		de: 'Gib ein Stichwort ein, um zu starten.',
 		en: 'Enter a keyword to get started.'
