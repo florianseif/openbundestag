@@ -17,6 +17,11 @@ export const STRINGS: Dict = {
 	cta_explore: { de: 'Daten erkunden', en: 'Explore the data' },
 	nav_wortsuche: { de: 'Wortsuche', en: 'Word Search' },
 	cta_try: { de: 'Selbst ausprobieren', en: 'Try it yourself' },
+	cta_band_title: { de: 'Welches Wort verfolgst du?', en: 'Which word will you follow?' },
+	cta_band_sub: {
+		de: 'Wähle einen Begriff und sieh, wie er durch 76 Jahre Parlamentsgeschichte wandert.',
+		en: 'Pick a term and watch it travel through 76 years of parliamentary history.'
+	},
 	scroll_hint: { de: 'Scrollen', en: 'Scroll' },
 	stories_title: { de: 'Drei Schlaglichter', en: 'Three snapshots' },
 	stories_lead: {
@@ -72,6 +77,7 @@ export const STRINGS: Dict = {
 	},
 	error: { de: 'Etwas ist schiefgelaufen.', en: 'Something went wrong.' },
 	retry: { de: 'Erneut versuchen', en: 'Retry' },
+	api_unreachable: { de: 'API nicht erreichbar.', en: 'API unreachable.' },
 
 	// Drill-down
 	read_passage: { de: 'Passagen lesen', en: 'Read passages' },
