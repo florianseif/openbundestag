@@ -17,6 +17,11 @@ export const STRINGS: Dict = {
 	cta_explore: { de: 'Daten erkunden', en: 'Explore the data' },
 	nav_wortsuche: { de: 'Wortsuche', en: 'Word Search' },
 	cta_try: { de: 'Selbst ausprobieren', en: 'Try it yourself' },
+	cta_band_title: { de: 'Welches Wort verfolgst du?', en: 'Which word will you follow?' },
+	cta_band_sub: {
+		de: 'Wähle einen Begriff und sieh, wie er durch 76 Jahre Parlamentsgeschichte wandert.',
+		en: 'Pick a term and watch it travel through 76 years of parliamentary history.'
+	},
 	scroll_hint: { de: 'Scrollen', en: 'Scroll' },
 	stories_title: { de: 'Drei Schlaglichter', en: 'Three snapshots' },
 	stories_lead: {
@@ -24,6 +29,12 @@ export const STRINGS: Dict = {
 		en: 'Single words tell the story of the parliament. Three examples.'
 	},
 	story_open: { de: 'Im Explorer öffnen', en: 'Open in explorer' },
+	arc_aria: {
+		de: 'Parlamentsvisualisierung: Redeanteil nach Partei',
+		en: 'Parliament visualisation: share of speeches by party'
+	},
+	arc_total: { de: 'Reden insgesamt', en: 'Speeches total' },
+	arc_other: { de: 'Sonstige', en: 'Other' },
 
 	// Explorer
 	search: { de: 'Suche', en: 'Search' },
@@ -62,6 +73,14 @@ export const STRINGS: Dict = {
 	},
 	no_results_title: { de: 'Stille im Plenum', en: 'Silence in the chamber' },
 	try_instead: { de: 'Versuch stattdessen', en: 'Try instead' },
+	cmp_add: { de: 'Wort vergleichen', en: 'Compare a word' },
+	cmp_ph: { de: 'Zweites Wort…', en: 'Second word…' },
+	cmp_clear: { de: 'Vergleich entfernen', en: 'Remove comparison' },
+	cmp_exit: { de: 'Vergleich beenden', en: 'Exit comparison' },
+	cmp_hint: {
+		de: 'Zwei Begriffe im direkten Vergleich — Gesamtnennungen pro Zeitraum.',
+		en: 'Two terms head-to-head — total mentions per period.'
+	},
 	enter_keyword: {
 		de: 'Gib ein Stichwort ein, um zu starten.',
 		en: 'Enter a keyword to get started.'
@@ -72,6 +91,7 @@ export const STRINGS: Dict = {
 	},
 	error: { de: 'Etwas ist schiefgelaufen.', en: 'Something went wrong.' },
 	retry: { de: 'Erneut versuchen', en: 'Retry' },
+	api_unreachable: { de: 'API nicht erreichbar.', en: 'API unreachable.' },
 
 	// Drill-down
 	read_passage: { de: 'Passagen lesen', en: 'Read passages' },

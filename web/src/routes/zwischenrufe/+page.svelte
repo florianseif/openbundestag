@@ -76,7 +76,7 @@
 		try {
 			meta = await api.zwischenrufe.meta();
 		} catch {
-			bootError = 'API nicht erreichbar.';
+			bootError = i18n.t('api_unreachable');
 			loading = false;
 			return;
 		}

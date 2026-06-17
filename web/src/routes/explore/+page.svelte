@@ -19,6 +19,7 @@
 	} from '$lib/types';
 
 	import TimelineChart from '$lib/components/TimelineChart.svelte';
+	import CompareChart from '$lib/components/CompareChart.svelte';
 	import HBars from '$lib/components/HBars.svelte';
 	import Donut from '$lib/components/Donut.svelte';
 	import SpeechModal from '$lib/components/SpeechModal.svelte';
@@ -93,6 +94,29 @@
 
 	let topN = $state(15);
 
+	// --- word-vs-word comparison ----------------------------------------------
+	let showCompare = $state(!!sp.get('vs'));
+	let compareWord = $state(sp.get('vs') ?? '');
+	let compareTimeline = $state<TimelinePoint[]>([]);
+	const compareActive = $derived(compareWord.trim().length > 0);
+
+	// Aggregate a per-party timeline into one all-party series per period.
+	function aggregate(tl: TimelinePoint[]): { period: string; value: number }[] {
+		const m = new Map<string, number>();
+		for (const p of tl) m.set(p.period, (m.get(p.period) ?? 0) + p.value);
+		return [...m.entries()]
+			.map(([period, value]) => ({ period, value }))
+			.sort((x, y) => (x.period < y.period ? -1 : 1));
+	}
+	const seriesA = $derived(aggregate(timeline));
+	const seriesB = $derived(aggregate(compareTimeline));
+
+	function closeCompare() {
+		compareWord = '';
+		showCompare = false;
+		compareTimeline = [];
+	}
+
 	async function boot() {
 		bootError = null;
 		try {
@@ -130,6 +154,24 @@
 		debounce = setTimeout(() => runQuery(f, pid, n), 280);
 	});
 
+	// Compare word B: fetch its timeline (whole-keyword, same term/mode filters).
+	let cmpDebounce: ReturnType<typeof setTimeout>;
+	$effect(() => {
+		if (!meta) return;
+		const w = compareWord.trim();
+		const f = { ...filters, parties: [...filters.parties], terms: [...filters.terms] };
+		if (!w) { compareTimeline = []; return; }
+		clearTimeout(cmpDebounce);
+		cmpDebounce = setTimeout(async () => {
+			try {
+				const res = await api.search({ ...f, word: w, politician_id: null }, 1);
+				compareTimeline = res.timeline;
+			} catch {
+				compareTimeline = [];
+			}
+		}, 320);
+	});
+
 	async function runQuery(f: Filters, pid: number | null, n: number) {
 		if (!f.word.trim()) {
 			total = null; timeline = []; byParty = []; top = [];
@@ -165,6 +207,8 @@
 		for (const t of f.terms) url.searchParams.append('terms', String(t));
 		if (polId != null) url.searchParams.set('pol', String(polId));
 		else url.searchParams.delete('pol');
+		if (compareWord.trim()) url.searchParams.set('vs', compareWord.trim());
+		else url.searchParams.delete('vs');
 		// Legacy date params no longer used — clean them up
 		url.searchParams.delete('from');
 		url.searchParams.delete('to');
@@ -281,11 +325,26 @@ const partyBars = $derived(
 				<button class="reset-btn" onclick={reset}>{i18n.t('reset')}</button>
 			</div>
 
-			<!-- Suggestions -->
+			<!-- Suggestions + compare toggle -->
 			<div class="suggestions">
 				{#each SUGGESTIONS as w (w)}
 					<button class="suggestion" class:active={filters.word === w} onclick={() => (filters.word = w)}>{w}</button>
 				{/each}
+				{#if showCompare || compareWord}
+					<span class="cmp-field">
+						<span class="cmp-vs">vs</span>
+						<input
+							class="cmp-input"
+							bind:value={compareWord}
+							placeholder={i18n.t('cmp_ph')}
+							maxlength={meta.keyword_max_len}
+							autocomplete="off"
+						/>
+						<button class="cmp-x" onclick={closeCompare} aria-label={i18n.t('cmp_clear')}>✕</button>
+					</span>
+				{:else}
+					<button class="cmp-add" onclick={() => (showCompare = true)}>+ {i18n.t('cmp_add')}</button>
+				{/if}
 			</div>
 
 			<!-- Wahlperioden term chips -->
@@ -365,6 +424,26 @@ const partyBars = $derived(
 			{:else}
 				{#if queryError}
 					<div class="empty-state glass"><p class="err">{queryError}</p></div>
+				{:else if compareActive}
+					<!-- word-vs-word comparison -->
+					<section class="panel hero-panel solid compare-panel">
+						<header class="p-head">
+							<div>
+								<h3 class="cmp-title">{filters.word} <span class="cmp-vs-h">vs</span> {compareWord}</h3>
+								<p class="p-hint">{i18n.t('cmp_hint')}</p>
+							</div>
+							<button class="reset-btn" onclick={closeCompare}>{i18n.t('cmp_exit')}</button>
+						</header>
+						{#if seriesB.length}
+							<CompareChart
+								a={{ word: filters.word, color: 'var(--accent)', series: seriesA }}
+								b={{ word: compareWord, color: 'var(--spark)', series: seriesB }}
+								{valueLabel}
+							/>
+						{:else}
+							<p class="empty">{i18n.t('no_results', { word: compareWord })}</p>
+						{/if}
+					</section>
 				{:else}
 					<!-- Timeline hero with flip to speech list -->
 					<div class="hero-wrap">
@@ -662,6 +741,72 @@ const partyBars = $derived(
 		color: var(--accent);
 		border-color: var(--accent);
 		background: color-mix(in srgb, var(--accent) 10%, transparent);
+	}
+
+	/* ── Compare control ────────────────────────────────────────────────── */
+	.cmp-add {
+		font: inherit;
+		font-size: 0.76rem;
+		font-weight: 600;
+		padding: 0.2rem 0.7rem;
+		border-radius: 999px;
+		border: 1px dashed var(--line-3);
+		background: none;
+		color: var(--ink-2);
+		cursor: pointer;
+		transition: color 0.15s, border-color 0.15s;
+	}
+	.cmp-add:hover { color: var(--spark); border-color: var(--spark); }
+	.cmp-field {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.1rem 0.3rem 0.1rem 0.55rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--spark) 55%, var(--line-2));
+		background: color-mix(in srgb, var(--spark) 8%, transparent);
+	}
+	.cmp-vs {
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--spark);
+	}
+	.cmp-input {
+		font: inherit;
+		font-size: 0.8rem;
+		background: none;
+		border: none;
+		outline: none;
+		color: var(--ink);
+		width: 8.5rem;
+		padding: 0.2rem 0;
+	}
+	.cmp-input::placeholder { color: var(--ink-3); }
+	.cmp-x {
+		border: none;
+		background: none;
+		cursor: pointer;
+		color: var(--ink-3);
+		font-size: 0.72rem;
+		line-height: 1;
+		padding: 0.2rem 0.25rem;
+	}
+	.cmp-x:hover { color: var(--spark); }
+	.compare-panel .cmp-title {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+	.cmp-vs-h {
+		font-family: var(--sans);
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-3);
 	}
 
 	/* ── Wahlperioden chips ─────────────────────────────────────────────── */

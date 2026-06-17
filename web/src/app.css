@@ -20,10 +20,11 @@
 	--line-2: rgba(255, 255, 255, 0.13);
 	--line-3: rgba(255, 255, 255, 0.22);
 
-	/* Ink */
+	/* Ink — ink-3 is the muted tier; lifted to #7c869c so even small captions,
+	   ticks and placeholders clear WCAG AA (5.5:1 on bg, 5.1:1 on surface). */
 	--ink: #eef1f8;
 	--ink-2: #9aa2b4;
-	--ink-3: #626a7d;
+	--ink-3: #7c869c;
 
 	/* Accents — electric periwinkle → violet → rose aurora */
 	--accent: #6b91ff;
