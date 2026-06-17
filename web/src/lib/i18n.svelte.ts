@@ -23,6 +23,7 @@ export const STRINGS: Dict = {
 		de: 'Einzelne Begriffe erzählen die Geschichte des Parlaments. Drei Beispiele.',
 		en: 'Single words tell the story of the parliament. Three examples.'
 	},
+	story_open: { de: 'Im Explorer öffnen', en: 'Open in explorer' },
 
 	// Explorer
 	search: { de: 'Suche', en: 'Search' },
