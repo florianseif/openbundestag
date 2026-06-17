@@ -1301,5 +1301,9 @@ const partyBars = $derived(
 	}
 	@media (max-width: 520px) {
 		.controls-row { gap: 0.6rem; }
+		/* Larger tap targets for thumbs (≈44px) on the segmented toggles
+		   and the politician-picker clear button. */
+		.seg button { padding: 0.55rem 0.85rem; min-height: 40px; }
+		.pol-clr { padding: 0.5rem; font-size: 0.85rem; }
 	}
 </style>

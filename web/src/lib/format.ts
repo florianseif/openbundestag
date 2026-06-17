@@ -54,18 +54,28 @@ function darkSafe(hex: string): string {
 	return luminance(hex) < 0.06 ? '#7a7e8a' : hex;
 }
 
-/** Animate `0 → target`, calling `onTick` each frame. Returns a cancel fn. */
-export function countUp(target: number, onTick: (v: number) => void, dur = 900): () => void {
+/**
+ * Animate `from → target` (odometer-style), calling `onTick` each frame.
+ * `from` defaults to 0 for the classic count-up; pass the currently-shown value
+ * to morph smoothly between two non-zero numbers. Returns a cancel fn.
+ */
+export function countUp(
+	target: number,
+	onTick: (v: number) => void,
+	dur = 900,
+	from = 0
+): () => void {
 	if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 		onTick(target);
 		return () => {};
 	}
 	const start = performance.now();
+	const delta = target - from;
 	let raf = 0;
 	const step = (now: number) => {
 		const p = Math.min(1, (now - start) / dur);
 		const eased = 1 - Math.pow(1 - p, 3);
-		onTick(Math.round(target * eased));
+		onTick(Math.round(from + delta * eased));
 		if (p < 1) raf = requestAnimationFrame(step);
 	};
 	raf = requestAnimationFrame(step);

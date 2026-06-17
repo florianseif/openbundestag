@@ -73,6 +73,10 @@
 
 html {
 	scroll-behavior: smooth;
+	/* Safety net: never let a stray wide element produce horizontal page
+	   scroll on mobile. `clip` (not `hidden`) avoids creating a scroll
+	   container that would break the sticky header. */
+	overflow-x: clip;
 }
 
 body {

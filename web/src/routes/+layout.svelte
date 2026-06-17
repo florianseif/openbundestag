@@ -240,8 +240,33 @@
 
 	@media (max-width: 640px) {
 		.tag { display: none; }
-		nav { gap: 0.4rem; }
-		.nav-pill { padding: 0.38rem 0.75rem; font-size: 0.82rem; }
+		/* Stack: brand on top, nav becomes a full-width swipeable pill strip
+		   so every destination stays reachable instead of overflowing the page. */
+		.bar {
+			flex-wrap: wrap;
+			height: auto;
+			padding: 0.55rem 0 0.6rem;
+			row-gap: 0.5rem;
+		}
+		nav {
+			flex: 1 1 100%;
+			width: 100%;
+			gap: 0.4rem;
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: none;
+			/* room so the focus ring / scroll isn't clipped */
+			padding-bottom: 2px;
+		}
+		nav::-webkit-scrollbar { display: none; }
+		.nav-pill {
+			flex: none;
+			white-space: nowrap;
+			padding: 0.5rem 0.85rem;
+			min-height: 40px;
+			font-size: 0.84rem;
+		}
 	}
 	@media (max-width: 420px) {
 		.name { font-size: 1rem; }
