@@ -18,11 +18,13 @@ Explore **word usage across German Bundestag plenary debates** (1949–present, 
 # Install
 uv sync
 
-# Run the full pipeline (Wahlperiode 20, ~30 min)
+# Run the full pipeline for the current term (default 21)
 uv run run.py --phase all
 
-# Or build everything across all terms
-for term in {1..21}; do uv run run.py --phase all --term $term; done
+# Or build the whole corpus (all terms 1–21) in one command.
+# (--all-terms skips the bot-protected download and builds from data you
+#  already have; run `--phase extract --all-terms` first for a fresh clone.)
+uv run run.py --phase all --all-terms
 
 # Launch the Streamlit app
 uv run streamlit run app.py  # opens http://localhost:8501
@@ -297,11 +299,11 @@ Pre-built database is published to [Hugging Face](https://huggingface.co/dataset
 **To update the published database:**
 
 ```bash
-# Build locally (all terms)
-for term in {1..21}; do uv run run.py --phase all --term $term; done
-uv run run.py --phase ministers
-uv run run.py --phase finalize
-for term in {1..21}; do uv run run.py --phase zwischenrufe --term $term; done
+# (Re)download every term first if you need fresh data (bot-protected, slow):
+uv run run.py --phase extract --all-terms
+
+# Rebuild the whole DB (all terms, all phases, compacted) in one command:
+uv run run.py --phase all --all-terms
 
 # Upload to HF (one-time auth)
 uv run hf auth login
