@@ -149,31 +149,10 @@
 		onpick?.(hoverRows.period);
 	}
 
-	// --- peak annotation: the single tallest visible vertex -------------------
-	const peak = $derived.by(() => {
-		let best: { period: string; party: string; value: number } | null = null;
-		for (const p of periods) {
-			for (const party of visible) {
-				const v = lookup.get(`${p}|${party}`) ?? 0;
-				if (!best || v > best.value) best = { period: p, party, value: v };
-			}
-		}
-		return best && best.value > 0 ? best : null;
-	});
-	// A clean annotation pill, clamped inside the plot so it never clips.
-	const peakLabel = $derived.by(() => {
-		if (!peak) return null;
-		const px = x(new Date(peak.period));
-		const py = y(peak.value);
-		const text = `${i18n.t('tl_peak')} · ${fmtYear(new Date(peak.period))} · ${formatNumber(peak.value, i18n.lang)}`;
-		const w = Math.round(text.length * 5.9 + 36);
-		const h = 22;
-		const cx = Math.min(cw - m.r - w / 2 - 2, Math.max(m.l + w / 2 + 2, px));
-		// Prefer the pill above the vertex; flip below if it would clip the top.
-		const above = py - 42 > m.t;
-		const cy = above ? py - 32 : py + 32;
-		return { px, py, cx, cy, w, h, above, text, color: partyColor(peak.party) };
-	});
+	// Duration for the initial draw-in animation, matching the play button speed.
+	const drawDur = $derived(
+		periods.length < 2 ? 1.1 : Math.min(9, Math.max(4.2, periods.length * 0.23))
+	);
 
 	// --- "play through history": draws the lines in from past → present -------
 	// A clip rect sweeps left→right so the lines appear to be drawn over time,
@@ -386,41 +365,10 @@
 					pathLength="1"
 					class="line"
 					class:dim={hoverParty && hoverParty !== party}
+					style="--draw-dur: {drawDur}s"
 				/>
 			{/each}
 		</g>
-
-		<!-- peak annotation: marks the moment the word was most discussed -->
-		{#if peakLabel && hoverIdx == null && !playing}
-			<g class="peak" pointer-events="none">
-				<line
-					x1={peakLabel.px}
-					y1={peakLabel.py}
-					x2={peakLabel.cx}
-					y2={peakLabel.above ? peakLabel.cy + peakLabel.h / 2 : peakLabel.cy - peakLabel.h / 2}
-					class="peak-stem"
-					stroke={peakLabel.color}
-				/>
-				<circle cx={peakLabel.px} cy={peakLabel.py} r="8" fill="none" stroke={peakLabel.color} stroke-opacity="0.3" />
-				<circle cx={peakLabel.px} cy={peakLabel.py} r="4" fill={peakLabel.color} stroke="var(--bg)" stroke-width="1.6" />
-				<rect
-					x={peakLabel.cx - peakLabel.w / 2}
-					y={peakLabel.cy - peakLabel.h / 2}
-					width={peakLabel.w}
-					height={peakLabel.h}
-					rx={peakLabel.h / 2}
-					class="peak-pill"
-				/>
-				<circle cx={peakLabel.cx - peakLabel.w / 2 + 12} cy={peakLabel.cy} r="3" fill={peakLabel.color} />
-				<text
-					x={peakLabel.cx - peakLabel.w / 2 + 22}
-					y={peakLabel.cy}
-					class="peak-label"
-					text-anchor="start"
-					dominant-baseline="central"
-				>{peakLabel.text}</text>
-			</g>
-		{/if}
 
 		<!-- play-through: glowing scan line + moving line heads (past → present) -->
 		{#if playing}
@@ -562,35 +510,6 @@
 		background: color-mix(in srgb, var(--accent) 12%, transparent);
 		box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 	}
-	/* Peak annotation */
-	.peak {
-		animation: peak-in 0.45s var(--ease) both;
-	}
-	@keyframes peak-in {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-	.peak-stem {
-		stroke-width: 1;
-		stroke-opacity: 0.45;
-		stroke-dasharray: 2 3;
-	}
-	.peak-pill {
-		fill: color-mix(in srgb, var(--surface) 90%, transparent);
-		stroke: var(--line-2);
-		stroke-width: 1;
-	}
-	.peak-label {
-		fill: var(--ink);
-		font-family: var(--sans);
-		font-size: 0.7rem;
-		font-weight: 600;
-		letter-spacing: 0.01em;
-	}
 	/* Play-through scan */
 	.scan-line {
 		stroke: var(--accent);
@@ -647,7 +566,7 @@
 		cursor: pointer;
 	}
 	.line {
-		animation: draw 1.1s var(--ease) forwards;
+		animation: draw var(--draw-dur, 1.1s) var(--ease) forwards;
 		transition: opacity 0.25s;
 	}
 	.line.dim {
