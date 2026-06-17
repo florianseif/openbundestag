@@ -1,0 +1,15 @@
+[
+  { "date": "1961-08-13", "de": "Mauerbau", "en": "Berlin Wall built" },
+  { "date": "1973-10-17", "de": "Ölkrise", "en": "Oil crisis" },
+  { "date": "1986-04-26", "de": "Tschernobyl", "en": "Chernobyl" },
+  { "date": "1989-11-09", "de": "Mauerfall", "en": "Fall of the Wall" },
+  { "date": "1990-10-03", "de": "Deutsche Einheit", "en": "Reunification" },
+  { "date": "1999-01-01", "de": "Euro-Einführung", "en": "Euro introduced" },
+  { "date": "2001-09-11", "de": "11. September", "en": "9/11 attacks" },
+  { "date": "2003-03-14", "de": "Agenda 2010", "en": "Agenda 2010" },
+  { "date": "2008-09-15", "de": "Finanzkrise", "en": "Financial crisis" },
+  { "date": "2011-03-11", "de": "Fukushima", "en": "Fukushima" },
+  { "date": "2015-09-04", "de": "Flüchtlingskrise", "en": "Refugee crisis" },
+  { "date": "2020-03-11", "de": "Corona-Pandemie", "en": "COVID-19 pandemic" },
+  { "date": "2022-02-24", "de": "Angriff auf die Ukraine", "en": "Invasion of Ukraine" }
+]

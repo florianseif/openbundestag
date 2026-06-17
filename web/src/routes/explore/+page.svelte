@@ -43,6 +43,10 @@
 	};
 	let filters = $state<Filters>({ ...DEFAULTS });
 
+	// Curated example searches — each produces a dramatic, story-telling curve.
+	// Reused by the suggestion row and the zero-results recovery state.
+	const SUGGESTIONS = ['Schuldenbremse', 'Klimawandel', 'Migration', 'Digitalisierung', 'Rente', 'Ukraine'];
+
 	// Politician filter — scopes only the timeline and speech list, not the party/speaker panels
 	let polId = $state<number | null>(sp.get('pol') ? Number(sp.get('pol')) : null);
 	let polQuery = $state(sp.get('pol') ? '…' : '');
@@ -279,7 +283,7 @@ const partyBars = $derived(
 
 			<!-- Suggestions -->
 			<div class="suggestions">
-				{#each ['Schuldenbremse', 'Klimawandel', 'Migration', 'Digitalisierung', 'Rente', 'Ukraine'] as w (w)}
+				{#each SUGGESTIONS as w (w)}
 					<button class="suggestion" class:active={filters.word === w} onclick={() => (filters.word = w)}>{w}</button>
 				{/each}
 			</div>
@@ -306,8 +310,10 @@ const partyBars = $derived(
 		</div>
 
 		<!-- ── Main content ──────────────────────────────────────────────── -->
-		<div class="content" class:scanning={loading}>
-			{#if loading}
+		<!-- Two loading modes: a skeleton on the very first query (no data yet),
+		     and the dim+scan beam when refreshing already-shown results. -->
+		<div class="content" class:scanning={loading && total}>
+			{#if loading && total}
 				<div class="data-scan" aria-hidden="true" transition:fade={{ duration: 200 }}>
 					<div class="scan-beam"></div>
 					<div class="scan-trail"></div>
@@ -327,9 +333,34 @@ const partyBars = $derived(
 					</svg>
 					<p>{i18n.t('enter_keyword')}</p>
 				</div>
+			{:else if loading && !total}
+				<!-- First-load skeleton: shimmer placeholders shaped like the result -->
+				<div class="skeleton" aria-hidden="true" transition:fade={{ duration: 150 }}>
+					<div class="sk-tabs">
+						<span class="sk-shimmer"></span>
+						<span class="sk-shimmer"></span>
+					</div>
+					<div class="sk-hero sk-shimmer"></div>
+					<div class="grid-2">
+						<div class="sk-panel sk-shimmer"></div>
+						<div class="sk-panel sk-shimmer"></div>
+					</div>
+				</div>
 			{:else if total && total.count === 0}
-				<div class="empty-state glass">
-					<p>{i18n.t('no_results', { word: filters.word })}</p>
+				<!-- Zero results — a designed moment, not a dead end -->
+				<div class="empty-state glass zero">
+					<svg class="zero-icon" width="120" height="40" viewBox="0 0 120 40" fill="none" aria-hidden="true">
+						<line x1="4" y1="20" x2="116" y2="20" stroke="var(--line-3)" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 6"/>
+						<circle cx="60" cy="20" r="3.5" fill="var(--accent)"/>
+					</svg>
+					<h3 class="zero-title">{i18n.t('no_results_title')}</h3>
+					<p class="zero-sub">{i18n.t('no_results', { word: filters.word })}</p>
+					<div class="zero-suggest">
+						<span class="zero-lbl">{i18n.t('try_instead')}</span>
+						{#each SUGGESTIONS.filter((w) => w !== filters.word).slice(0, 5) as w (w)}
+							<button class="suggestion" onclick={() => (filters.word = w)}>{w}</button>
+						{/each}
+					</div>
 				</div>
 			{:else}
 				{#if queryError}
@@ -949,6 +980,71 @@ const partyBars = $derived(
 		display: flex; flex-direction: column;
 		align-items: center; gap: 1.2rem;
 		color: var(--ink-3); text-align: center;
+	}
+
+	/* ── Zero-results designed moment ──────────────────────────────────── */
+	.empty-state.zero { gap: 0.85rem; }
+	.zero-icon { margin-bottom: 0.4rem; opacity: 0.9; }
+	.zero-title {
+		margin: 0;
+		font-family: var(--display);
+		font-size: 1.35rem;
+		color: var(--ink);
+		letter-spacing: -0.01em;
+	}
+	.zero-sub { margin: 0; max-width: 36ch; color: var(--ink-3); }
+	.zero-suggest {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.4rem;
+		margin-top: 0.6rem;
+	}
+	.zero-lbl {
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		margin-right: 0.15rem;
+	}
+
+	/* ── First-load skeleton ───────────────────────────────────────────── */
+	.skeleton {
+		display: flex;
+		flex-direction: column;
+		gap: 1.4rem;
+	}
+	.sk-tabs { display: flex; gap: 0.5rem; }
+	.sk-tabs .sk-shimmer { width: 130px; height: 38px; border-radius: 999px; }
+	.sk-hero { height: 420px; border-radius: 14px; }
+	.sk-panel { height: 280px; border-radius: 14px; }
+	.sk-shimmer {
+		position: relative;
+		overflow: hidden;
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+	}
+	.sk-shimmer::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		transform: translateX(-100%);
+		background: linear-gradient(
+			90deg,
+			transparent 0%,
+			color-mix(in srgb, var(--accent) 9%, transparent) 45%,
+			color-mix(in srgb, var(--spark, var(--accent)) 12%, transparent) 55%,
+			transparent 100%
+		);
+		animation: sk-sweep 1.5s ease-in-out infinite;
+	}
+	@keyframes sk-sweep {
+		to { transform: translateX(100%); }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.sk-shimmer::after { animation: none; }
 	}
 
 	/* ── Responsive ────────────────────────────────────────────────────── */
