@@ -353,6 +353,7 @@
 			{/if}
 		{/each}
 
+		{#key `${periods.length}|${periods[0]}|${periods[periods.length-1]}|${visible.join()}`}
 		<g filter="url(#glow-{uid})" clip-path={playing ? `url(#reveal-${uid})` : undefined}>
 			{#each visible as party (party)}
 				<path
@@ -369,6 +370,7 @@
 				/>
 			{/each}
 		</g>
+		{/key}
 
 		<!-- play-through: glowing scan line + moving line heads (past → present) -->
 		{#if playing}
