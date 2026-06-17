@@ -1,0 +1,41 @@
+{
+  "total": 766328,
+  "parties": [
+    {
+      "party": "Die Linke",
+      "n": 25173,
+      "share": 0.0328
+    },
+    {
+      "party": "SPD",
+      "n": 245930,
+      "share": 0.3209
+    },
+    {
+      "party": "Bündnis 90/Die Grünen",
+      "n": 55729,
+      "share": 0.0727
+    },
+    {
+      "party": "FDP",
+      "n": 127697,
+      "share": 0.1666
+    },
+    {
+      "party": "CDU/CSU",
+      "n": 261063,
+      "share": 0.3407
+    },
+    {
+      "party": "AfD",
+      "n": 8764,
+      "share": 0.0114
+    },
+    {
+      "party": "Sonstige",
+      "other": true,
+      "n": 41972,
+      "share": 0.0548
+    }
+  ]
+}

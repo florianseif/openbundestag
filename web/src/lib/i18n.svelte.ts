@@ -29,6 +29,12 @@ export const STRINGS: Dict = {
 		en: 'Single words tell the story of the parliament. Three examples.'
 	},
 	story_open: { de: 'Im Explorer öffnen', en: 'Open in explorer' },
+	arc_aria: {
+		de: 'Parlamentsvisualisierung: Redeanteil nach Partei',
+		en: 'Parliament visualisation: share of speeches by party'
+	},
+	arc_total: { de: 'Reden insgesamt', en: 'Speeches total' },
+	arc_other: { de: 'Sonstige', en: 'Other' },
 
 	// Explorer
 	search: { de: 'Suche', en: 'Search' },
