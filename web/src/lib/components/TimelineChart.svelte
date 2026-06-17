@@ -7,6 +7,7 @@
 	import { partyColor, partyFullName, formatNumber, partyFoundingOrder } from '$lib/format';
 	import { i18n } from '$lib/i18n.svelte';
 	import governmentsRaw from '$lib/governments.json';
+	import eventsRaw from '$lib/events.json';
 
 	let {
 		data,
@@ -35,6 +36,7 @@
 	let hoverIdx = $state<number | null>(null);
 	let hoverParty = $state<string | null>(null);
 	let hoverGovNr = $state<number | null>(null);
+	let hoverEventIdx = $state<number | null>(null);
 
 	// --- reshape into per-party series over sorted periods --------------------
 	const periods = $derived([...new Set(data.map((d) => d.period))].sort());
@@ -137,6 +139,36 @@
 	const hoveredGov = $derived(
 		hoverGovNr != null ? governmentsRaw.find((g) => g.nr === hoverGovNr) ?? null : null
 	);
+
+	// --- historical event markers ---------------------------------------------
+	// Curated moments (Mauerfall, Fukushima, …) rendered as faint guides at the
+	// top of the plot — only those inside the current time domain. They turn a
+	// curve into a story: a spike in "Mauer" lands exactly on 1989.
+	const eventMarks = $derived.by(() => {
+		if (dates.length < 2) return [];
+		const t0 = +dates[0];
+		const t1 = +dates[dates.length - 1];
+		return eventsRaw
+			.map((e) => ({ ...e, t: +new Date(e.date) }))
+			.filter((e) => e.t >= t0 && e.t <= t1)
+			.map((e) => ({
+				date: e.date,
+				year: e.date.slice(0, 4),
+				label: i18n.lang === 'de' ? e.de : e.en,
+				px: x(new Date(e.date))
+			}));
+	});
+	// The label pill for the hovered event, clamped inside the plot.
+	const eventLabel = $derived.by(() => {
+		if (hoverEventIdx == null) return null;
+		const ev = eventMarks[hoverEventIdx];
+		if (!ev) return null;
+		const text = `${ev.year} · ${ev.label}`;
+		const w = Math.round(text.length * 5.9 + 24);
+		const h = 20;
+		const cx = Math.min(cw - m.r - w / 2 - 2, Math.max(m.l + w / 2 + 2, ev.px));
+		return { px: ev.px, cx, cy: m.t + 15, w, h, text };
+	});
 
 	function toggle(party: string) {
 		ontoggleparty?.(party);
@@ -353,6 +385,18 @@
 			{/if}
 		{/each}
 
+		<!-- historical event guides (faint, behind the data lines) -->
+		{#each eventMarks as ev, i (ev.date)}
+			<line
+				x1={ev.px}
+				x2={ev.px}
+				y1={m.t}
+				y2={H - m.b}
+				class="event-line"
+				class:active={hoverEventIdx === i}
+			/>
+		{/each}
+
 		{#key `${periods.length}|${periods[0]}|${periods[periods.length-1]}|${visible.join()}`}
 		<g filter="url(#glow-{uid})" clip-path={playing ? `url(#reveal-${uid})` : undefined}>
 			{#each visible as party (party)}
@@ -420,6 +464,40 @@
 			{onclick}
 			role="presentation"
 		/>
+
+		<!-- event markers — sit on top so they stay hoverable over the capture layer -->
+		{#each eventMarks as ev, i (ev.date)}
+			<g
+				class="event-mark"
+				role="img"
+				aria-label="{ev.year}: {ev.label}"
+				onmouseenter={() => (hoverEventIdx = i)}
+				onmouseleave={() => (hoverEventIdx = null)}
+			>
+				<circle cx={ev.px} cy={m.t} r="9" fill="transparent" />
+				<circle cx={ev.px} cy={m.t} r="2.8" class="event-dot" class:active={hoverEventIdx === i} />
+			</g>
+		{/each}
+
+		<!-- hovered event label pill (topmost) -->
+		{#if eventLabel}
+			<g class="event-tip" pointer-events="none">
+				<rect
+					x={eventLabel.cx - eventLabel.w / 2}
+					y={eventLabel.cy - eventLabel.h / 2}
+					width={eventLabel.w}
+					height={eventLabel.h}
+					rx={eventLabel.h / 2}
+					class="event-pill"
+				/>
+				<text
+					x={eventLabel.cx}
+					y={eventLabel.cy}
+					class="event-label"
+					text-anchor="middle"
+					dominant-baseline="central">{eventLabel.text}</text>
+			</g>
+		{/if}
 	</svg>
 
 	<!-- Data tooltip -->
@@ -518,6 +596,58 @@
 		stroke-width: 1.5;
 		stroke-opacity: 0.85;
 		filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent));
+	}
+	/* Historical event markers */
+	.event-line {
+		stroke: var(--ink);
+		stroke-opacity: 0.07;
+		stroke-width: 1;
+		stroke-dasharray: 2 4;
+		pointer-events: none;
+		transition: stroke 0.2s, stroke-opacity 0.2s;
+	}
+	.event-line.active {
+		stroke: var(--accent);
+		stroke-opacity: 0.55;
+		stroke-dasharray: none;
+	}
+	.event-mark {
+		cursor: help;
+	}
+	.event-dot {
+		fill: var(--surface);
+		stroke: color-mix(in srgb, var(--accent) 45%, var(--ink-3));
+		stroke-width: 1.4;
+		transition: r 0.15s var(--spring), fill 0.2s, stroke 0.2s;
+	}
+	.event-mark:hover .event-dot,
+	.event-dot.active {
+		fill: var(--accent);
+		stroke: var(--accent);
+		r: 3.6;
+	}
+	.event-tip {
+		animation: ev-in 0.15s ease both;
+	}
+	@keyframes ev-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+	.event-pill {
+		fill: color-mix(in srgb, var(--surface) 92%, transparent);
+		stroke: var(--line-2);
+		stroke-width: 1;
+	}
+	.event-label {
+		fill: var(--ink);
+		font-family: var(--sans);
+		font-size: 0.68rem;
+		font-weight: 600;
+		letter-spacing: 0.01em;
 	}
 	.chip {
 		display: inline-flex;

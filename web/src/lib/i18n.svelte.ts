@@ -59,6 +59,8 @@ export const STRINGS: Dict = {
 		de: 'Keine Reden mit „{word}“ und den gewählten Filtern.',
 		en: 'No speeches containing “{word}” with the current filters.'
 	},
+	no_results_title: { de: 'Stille im Plenum', en: 'Silence in the chamber' },
+	try_instead: { de: 'Versuch stattdessen', en: 'Try instead' },
 	enter_keyword: {
 		de: 'Gib ein Stichwort ein, um zu starten.',
 		en: 'Enter a keyword to get started.'
