@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { i18n } from '$lib/i18n.svelte';
-	import { formatNumber } from '$lib/format';
+	import Counter from './Counter.svelte';
 
 	interface Bar {
 		label: string;
@@ -28,7 +27,7 @@
 					style:color={b.color}
 				></div>
 			</div>
-			<div class="val">{formatNumber(b.value, i18n.lang)}</div>
+			<div class="val"><Counter value={b.value} dur={650} /></div>
 		</div>
 	{/each}
 	{#if valueLabel}<div class="cap">{valueLabel}</div>{/if}

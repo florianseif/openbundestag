@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { pie, arc } from 'd3-shape';
 	import { i18n } from '$lib/i18n.svelte';
-	import { formatNumber } from '$lib/format';
+	import { formatNumber, countUp } from '$lib/format';
 
 	interface Slice {
 		label: string;
@@ -25,6 +25,15 @@
 
 	let hover = $state<number | null>(null);
 	const active = $derived(hover != null ? slices[hover] : null);
+
+	// Morph the resting centre total between values when the data changes.
+	// Hover shows the focused slice's raw value instantly (no per-hover tween).
+	let shownTotal = $state(0);
+	let curTotal = 0;
+	$effect(() => {
+		const target = total;
+		return countUp(target, (v) => ((curTotal = v), (shownTotal = v)), 650, curTotal);
+	});
 </script>
 
 <div class="donut">
@@ -43,7 +52,7 @@
 			/>
 		{/each}
 		<text class="center-v" text-anchor="middle" dy="-0.1em">
-			{active ? formatNumber(active.value, i18n.lang) : formatNumber(total, i18n.lang)}
+			{active ? formatNumber(active.value, i18n.lang) : formatNumber(shownTotal, i18n.lang)}
 		</text>
 		<text class="center-l" text-anchor="middle" dy="1.3em">
 			{active ? active.label : i18n.t('metric_speeches')}
