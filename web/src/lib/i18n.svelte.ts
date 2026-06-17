@@ -188,6 +188,51 @@ export const STRINGS: Dict = {
 		en: 'Applause not yet extracted. Run --phase zwischenrufe first.'
 	},
 
+	// Timeline annotations + playback
+	tl_peak: { de: 'Höhepunkt', en: 'Peak' },
+	tl_play: { de: 'Verlauf abspielen', en: 'Play history' },
+	tl_pause: { de: 'Pause', en: 'Pause' },
+
+	// Shared UI bits that were previously hard-coded in German
+	present: { de: 'heute', en: 'present' },
+	show_all: { de: 'Alle anzeigen', en: 'Show all' },
+	wahlperiode: { de: 'Wahlperiode', en: 'Electoral term' },
+	search_person: { de: 'Person suchen…', en: 'Search person…' },
+
+	// Zwischenrufe — stat subs, teaser hints, spotlight
+	zw_times_interrupted: { de: '{n}× unterbrochen', en: 'interrupted {n}×' },
+	zw_interrupted_the: { de: 'unterbrach {n}× die …', en: 'interrupted {n}× the …' },
+	zw_adv_matrix: {
+		de: 'Wer schießt auf wen? Die Konfrontationskarte',
+		en: 'Who fires at whom? The confrontation map'
+	},
+	zw_adv_parties: { de: 'Welche Fraktion dröhnt am lautesten?', en: 'Which faction roars loudest?' },
+	zw_adv_callers: { de: 'Die 20 unruhigsten Parlamentarier', en: 'The 20 most restless MPs' },
+	zw_adv_feed: { de: 'Echte Rufe aus dem Plenum, live', en: 'Real shouts from the floor, live' },
+
+	// Beifall — teaser hints, self-vs-other short label
+	bf_adv_matrix: {
+		de: 'Wer klatscht für wen? Die Solidaritätskarte',
+		en: 'Who applauds whom? The solidarity map'
+	},
+	bf_adv_parties: { de: 'Welche Fraktion klatscht am meisten?', en: 'Which faction applauds the most?' },
+	bf_adv_self: {
+		de: 'Wer klatscht für sich selbst, wer für andere?',
+		en: 'Who applauds themselves, who applauds others?'
+	},
+	bf_own_short: { de: 'eigen', en: 'own' },
+
+	// Interruption / applause matrix — axis labels + the counted noun
+	mx_axis_calling: { de: 'rufend ↓', en: 'calling ↓' },
+	mx_axis_interrupted: { de: 'unterbrochen →', en: 'interrupted →' },
+	mx_axis_applauding: { de: 'klatschend ↓', en: 'applauding ↓' },
+	mx_axis_applauded: { de: 'beklatscht →', en: 'applauded →' },
+	mx_noun_zw: { de: 'Zwischenrufe', en: 'interjections' },
+	mx_noun_bf: { de: 'Beifallsbekundungen', en: 'applause moments' },
+	mx_legend_less: { de: 'weniger', en: 'fewer' },
+	mx_legend_more: { de: 'mehr', en: 'more' },
+	mx_diagonal: { de: 'Diagonale = eigene Fraktion', en: 'Diagonal = own faction' },
+
 	footer_data: { de: 'Datenquelle & Lizenz', en: 'Data source & licence' },
 	footer_body: {
 		de: 'Redebeiträge: offizielle Plenarprotokolle des Deutschen Bundestages (§ 5 Abs. 1 UrhG), © Deutscher Bundestag. Ministerdaten: Wikipedia (CC BY-SA 4.0). Ein unabhängiges Projekt, inspiriert von Open Discourse.',

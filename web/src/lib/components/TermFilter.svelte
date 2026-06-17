@@ -4,6 +4,7 @@
 	// single anchor then another chip selects the contiguous range between them.
 	// Shared by the explorer and the Zwischenrufe page.
 	import { partyColor } from '$lib/format';
+	import { i18n } from '$lib/i18n.svelte';
 	import governmentsRaw from '$lib/governments.json';
 	import type { TermInfo } from '$lib/types';
 
@@ -77,9 +78,9 @@
 
 <div class="term-row">
 	<div class="term-row-head">
-		<span class="term-row-lbl">Wahlperiode</span>
+		<span class="term-row-lbl">{i18n.t('wahlperiode')}</span>
 		{#if selected.length > 0}
-			<button class="term-clear" onclick={() => (selected = [])}>Alle anzeigen</button>
+			<button class="term-clear" onclick={() => (selected = [])}>{i18n.t('show_all')}</button>
 		{/if}
 	</div>
 	<div class="term-scroller">
@@ -191,15 +192,10 @@
 		inset: -3px;
 		border-radius: 12px;
 		background: var(--grad);
-		opacity: 0.45;
-		filter: blur(10px);
+		opacity: 0.3;
+		filter: blur(11px);
 		z-index: -1;
 		pointer-events: none;
-		animation: aurora-spin 4s linear infinite;
-	}
-	@keyframes aurora-spin {
-		from { filter: blur(10px) hue-rotate(0deg); }
-		to   { filter: blur(10px) hue-rotate(360deg); }
 	}
 	.chip-body {
 		display: flex;

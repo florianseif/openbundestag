@@ -227,7 +227,7 @@ const partyBars = $derived(
 		meta
 			? [
 					{ value: meta.terms.length, label: i18n.t('hero_terms') },
-					{ value: `${meta.min_date.slice(0, 4)}–heute`, label: '' },
+					{ value: `${meta.min_date.slice(0, 4)}–${i18n.t('present')}`, label: '' },
 					{ value: meta.parties.length, label: i18n.t('hero_parties') }
 				]
 			: []
@@ -429,7 +429,7 @@ const partyBars = $derived(
 							<header class="p-head"><h3>{i18n.t('by_party_title')}</h3></header>
 							{#if partyBars.length}
 								<div class="party-body">
-									<Donut slices={donutSlices} />
+									<div class="donut-cell"><Donut slices={donutSlices} /></div>
 									<HBars bars={partyBars} valueLabel={i18n.t('speeches')} />
 								</div>
 							{:else}
@@ -540,20 +540,14 @@ const partyBars = $derived(
 		border-radius: 17px;
 		background: var(--grad);
 		opacity: 0;
-		filter: blur(10px);
+		filter: blur(12px);
 		transition: opacity 0.45s;
 		z-index: 0;
-		animation: aurora-spin 4s linear infinite;
 	}
 	.search-aurora-ring:focus-within::before,
 	.search-aurora-ring.has-word::before { opacity: 1; }
-	.search-aurora-ring:focus-within::after { opacity: 0.45; }
-	.search-aurora-ring.has-word:focus-within::after { opacity: 0.6; }
-
-	@keyframes aurora-spin {
-		from { filter: blur(10px) hue-rotate(0deg); }
-		to   { filter: blur(10px) hue-rotate(360deg); }
-	}
+	.search-aurora-ring:focus-within::after { opacity: 0.4; }
+	.search-aurora-ring.has-word:focus-within::after { opacity: 0.5; }
 
 	.search-input-wrap {
 		position: relative;
@@ -942,9 +936,10 @@ const partyBars = $derived(
 		gap: 1.5rem;
 		align-items: start;
 	}
-	.party-body > :first-child {
+	.party-body > .donut-cell {
 		justify-self: center;
-		max-width: 200px;
+		max-width: 220px;
+		width: 100%;
 	}
 
 	.empty, .err { color: var(--ink-3); padding: 2rem 0; text-align: center; }
