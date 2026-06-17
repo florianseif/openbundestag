@@ -188,8 +188,7 @@ export const STRINGS: Dict = {
 		en: 'Applause not yet extracted. Run --phase zwischenrufe first.'
 	},
 
-	// Timeline annotations + playback
-	tl_peak: { de: 'Höhepunkt', en: 'Peak' },
+	// Timeline playback
 	tl_play: { de: 'Verlauf abspielen', en: 'Play history' },
 	tl_pause: { de: 'Pause', en: 'Pause' },
 
