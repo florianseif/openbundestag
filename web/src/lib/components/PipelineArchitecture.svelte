@@ -17,8 +17,8 @@
 		label: string;
 	}
 
-	let hoveredNode: string | null = null;
-	let hoveredEdge: string | null = null;
+	let hoveredNode = $state<string | null>(null);
+	let hoveredEdge = $state<string | null>(null);
 
 	const nodes: Node[] = [
 		{
@@ -190,8 +190,9 @@
 					<g
 						class="edge-group"
 						class:hovered={isHovered}
-						on:mouseenter={() => (hoveredEdge = edgeId)}
-						on:mouseleave={() => (hoveredEdge = null)}
+						role="presentation"
+						onmouseenter={() => (hoveredEdge = edgeId)}
+						onmouseleave={() => (hoveredEdge = null)}
 					>
 						<line
 							x1={x1}
@@ -225,10 +226,10 @@
 				<g
 					class="node-group"
 					class:hovered={isHovered}
-					on:mouseenter={() => (hoveredNode = node.id)}
-					on:mouseleave={() => (hoveredNode = null)}
-					on:focus={() => (hoveredNode = node.id)}
-					on:blur={() => (hoveredNode = null)}
+					onmouseenter={() => (hoveredNode = node.id)}
+					onmouseleave={() => (hoveredNode = null)}
+					onfocus={() => (hoveredNode = node.id)}
+					onblur={() => (hoveredNode = null)}
 					role="button"
 					tabindex="0"
 				>

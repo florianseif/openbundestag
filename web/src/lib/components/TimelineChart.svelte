@@ -114,6 +114,7 @@
 	// --- hover ----------------------------------------------------------------
 	const bis = bisector((d: Date) => d).center;
 	function onmove(e: MouseEvent) {
+		if (playing) stopPlay(); // manual hover always wins over playback
 		const svg = (e.currentTarget as SVGElement).closest('svg')!;
 		const rect = svg.getBoundingClientRect();
 		const scale = cw / rect.width;
@@ -148,6 +149,72 @@
 		onpick?.(hoverRows.period);
 	}
 
+	// --- peak annotation: the single tallest visible vertex -------------------
+	const peak = $derived.by(() => {
+		let best: { period: string; party: string; value: number } | null = null;
+		for (const p of periods) {
+			for (const party of visible) {
+				const v = lookup.get(`${p}|${party}`) ?? 0;
+				if (!best || v > best.value) best = { period: p, party, value: v };
+			}
+		}
+		return best && best.value > 0 ? best : null;
+	});
+	// Clamp the peak label inside the plot so it never clips at the edges/top.
+	const peakLabel = $derived.by(() => {
+		if (!peak) return null;
+		const px = x(new Date(peak.period));
+		const py = y(peak.value);
+		const lx = Math.min(cw - m.r - 48, Math.max(m.l + 48, px));
+		const above = py - 30 > m.t;
+		const ly = above ? py - 16 : py + 22;
+		return {
+			px,
+			py,
+			lx,
+			ly,
+			above,
+			year: fmtYear(new Date(peak.period)),
+			value: peak.value,
+			color: partyColor(peak.party)
+		};
+	});
+
+	// --- "play through history" scrubber: drives hoverIdx across the periods ---
+	let playing = $state(false);
+	let playRaf = 0;
+	const reduceMotion =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	function stopPlay() {
+		playing = false;
+		cancelAnimationFrame(playRaf);
+	}
+	function togglePlay() {
+		if (playing) return stopPlay();
+		const N = periods.length;
+		if (N < 2) return;
+		if (reduceMotion) {
+			hoverIdx = N - 1;
+			return;
+		}
+		playing = true;
+		const dur = Math.min(9000, Math.max(3500, N * 170));
+		const start = performance.now();
+		const tick = (now: number) => {
+			if (!playing) return;
+			const t = Math.min(1, (now - start) / dur);
+			hoverIdx = Math.round(t * (N - 1));
+			if (t < 1) playRaf = requestAnimationFrame(tick);
+			else playing = false;
+		};
+		playRaf = requestAnimationFrame(tick);
+	}
+	// Cancel any running playback when the underlying data changes (new query).
+	$effect(() => {
+		void data;
+		return () => stopPlay();
+	});
+
 	const uid = Math.random().toString(36).slice(2, 8);
 
 	function shortName(chancellor: string) {
@@ -156,20 +223,39 @@
 	}
 </script>
 
-<div class="legend">
-	{#each parties as party (party)}
+<div class="tl-head">
+	<div class="legend">
+		{#each parties as party (party)}
+			<button
+				class="chip"
+				class:off={selectedParties.length > 0 && !selectedParties.includes(party)}
+				onclick={() => toggle(party)}
+				onmouseenter={() => (hoverParty = party)}
+				onmouseleave={() => (hoverParty = null)}
+				data-tip={partyFullName(party)}
+			>
+				<span class="dot" style:background={partyColor(party)}></span>
+				{party}
+			</button>
+		{/each}
+	</div>
+
+	{#if periods.length > 1}
 		<button
-			class="chip"
-			class:off={selectedParties.length > 0 && !selectedParties.includes(party)}
-			onclick={() => toggle(party)}
-			onmouseenter={() => (hoverParty = party)}
-			onmouseleave={() => (hoverParty = null)}
-			data-tip={partyFullName(party)}
+			class="tl-play"
+			class:playing
+			onclick={togglePlay}
+			aria-pressed={playing}
+			data-tip={playing ? i18n.t('tl_pause') : i18n.t('tl_play')}
 		>
-			<span class="dot" style:background={partyColor(party)}></span>
-			{party}
+			{#if playing}
+				<svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor" aria-hidden="true"><rect x="2" y="1.5" width="3.2" height="10" rx="1"/><rect x="7.8" y="1.5" width="3.2" height="10" rx="1"/></svg>
+			{:else}
+				<svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor" aria-hidden="true"><path d="M3 1.8v9.4a.7.7 0 0 0 1.07.6l7.3-4.7a.7.7 0 0 0 0-1.2l-7.3-4.7A.7.7 0 0 0 3 1.8Z"/></svg>
+			{/if}
+			<span>{playing ? i18n.t('tl_pause') : i18n.t('tl_play')}</span>
 		</button>
-	{/each}
+	{/if}
 </div>
 
 <div class="chart" bind:clientWidth={cw}>
@@ -269,6 +355,22 @@
 			{/each}
 		</g>
 
+		<!-- peak annotation: marks the moment the word was most discussed -->
+		{#if peakLabel && hoverIdx == null}
+			<g class="peak" pointer-events="none">
+				<line x1={peakLabel.px} x2={peakLabel.px} y1={peakLabel.py} y2={peakLabel.ly + (peakLabel.above ? 4 : -4)} class="peak-stem" stroke={peakLabel.color} />
+				<circle cx={peakLabel.px} cy={peakLabel.py} r="9" fill="none" stroke={peakLabel.color} stroke-opacity="0.35" />
+				<circle cx={peakLabel.px} cy={peakLabel.py} r="4.5" fill={peakLabel.color} stroke="var(--surface)" stroke-width="2" />
+				<text
+					x={peakLabel.lx}
+					y={peakLabel.ly}
+					class="peak-label"
+					text-anchor="middle"
+					dominant-baseline={peakLabel.above ? 'auto' : 'hanging'}
+				>{i18n.t('tl_peak')} {peakLabel.year} · {formatNumber(peakLabel.value, i18n.lang)}</text>
+			</g>
+		{/if}
+
 		<!-- hover crosshair + markers -->
 		{#if hoverRows}
 			<line
@@ -358,11 +460,64 @@
 </div>
 
 <style>
+	.tl-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.8rem;
+		margin-bottom: 0.8rem;
+	}
 	.legend {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.4rem;
-		margin-bottom: 0.8rem;
+		min-width: 0;
+	}
+	/* "Play through history" control */
+	.tl-play {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex: none;
+		font: inherit;
+		font-size: 0.78rem;
+		font-weight: 600;
+		padding: 0.32rem 0.8rem 0.32rem 0.7rem;
+		border-radius: 999px;
+		border: 1px solid var(--line-2);
+		background: var(--surface-2);
+		color: var(--ink-2);
+		cursor: pointer;
+		white-space: nowrap;
+		transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+	}
+	.tl-play:hover {
+		color: var(--ink);
+		border-color: color-mix(in srgb, var(--accent) 45%, var(--line-2));
+		background: color-mix(in srgb, var(--accent) 8%, transparent);
+	}
+	.tl-play svg { color: var(--accent); }
+	.tl-play.playing {
+		color: var(--ink);
+		border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+		background: color-mix(in srgb, var(--accent) 12%, transparent);
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+	}
+	/* Peak annotation */
+	.peak-stem {
+		stroke-width: 1;
+		stroke-opacity: 0.5;
+		stroke-dasharray: 2 3;
+	}
+	.peak-label {
+		fill: var(--ink);
+		font-family: var(--sans);
+		font-size: 0.7rem;
+		font-weight: 600;
+		paint-order: stroke;
+		stroke: var(--bg);
+		stroke-width: 3px;
+		stroke-linejoin: round;
 	}
 	.chip {
 		display: inline-flex;

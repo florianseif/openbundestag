@@ -87,16 +87,17 @@ for (let ri = 0; ri < ROW_RADII.length; ri++) {
 		display: block;
 		overflow: visible;
 	}
-	.d { opacity: 0.65; }
-	/* Each row breathes with a staggered phase — inner to outer */
-	.r0 { animation: breathe 3.6s ease-in-out infinite 0s; }
-	.r1 { animation: breathe 3.6s ease-in-out infinite 0.45s; }
-	.r2 { animation: breathe 3.6s ease-in-out infinite 0.9s; }
-	.r3 { animation: breathe 3.6s ease-in-out infinite 1.35s; }
-	.r4 { animation: breathe 3.6s ease-in-out infinite 1.8s; }
+	.d { opacity: 0.7; }
+	/* One gentle ambient signature — a slow staggered breath, inner to outer.
+	   Kept subtle on purpose; this is the only always-on motion on the page. */
+	.r0 { animation: breathe 6s ease-in-out infinite 0s; }
+	.r1 { animation: breathe 6s ease-in-out infinite 0.7s; }
+	.r2 { animation: breathe 6s ease-in-out infinite 1.4s; }
+	.r3 { animation: breathe 6s ease-in-out infinite 2.1s; }
+	.r4 { animation: breathe 6s ease-in-out infinite 2.8s; }
 	@keyframes breathe {
-		0%, 100% { opacity: 0.45; }
-		50%       { opacity: 0.95; }
+		0%, 100% { opacity: 0.6; }
+		50%       { opacity: 0.85; }
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.d { animation: none; opacity: 0.75; }
