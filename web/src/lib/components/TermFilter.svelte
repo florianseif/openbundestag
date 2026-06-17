@@ -4,6 +4,7 @@
 	// single anchor then another chip selects the contiguous range between them.
 	// Shared by the explorer and the Zwischenrufe page.
 	import { partyColor } from '$lib/format';
+	import { i18n } from '$lib/i18n.svelte';
 	import governmentsRaw from '$lib/governments.json';
 	import type { TermInfo } from '$lib/types';
 
@@ -32,8 +33,20 @@
 		selected = [term];
 	}
 
-	// Terms sorted newest-first for the chip row
-	const sortedTerms = $derived([...options].sort((a, b) => b.term - a.term));
+	// Oldest→newest, left→right — matching the timeline's time axis (past on the
+	// left, recent on the right) so the filter and the chart read the same way.
+	const sortedTerms = $derived([...options].sort((a, b) => a.term - b.term));
+
+	// The newest term sits on the right, so default-scroll there: the most recent
+	// Wahlperiode (the common starting point) is visible without scrolling.
+	let scroller: HTMLDivElement | undefined = $state();
+	let didInitScroll = false;
+	$effect(() => {
+		if (scroller && !didInitScroll && sortedTerms.length) {
+			scroller.scrollLeft = scroller.scrollWidth;
+			didInitScroll = true;
+		}
+	});
 
 	// --- chancellor lookup for term chips -------------------------------------
 	function govPartyToDisplay(code: string): string {
@@ -77,12 +90,12 @@
 
 <div class="term-row">
 	<div class="term-row-head">
-		<span class="term-row-lbl">Wahlperiode</span>
+		<span class="term-row-lbl">{i18n.t('wahlperiode')}</span>
 		{#if selected.length > 0}
-			<button class="term-clear" onclick={() => (selected = [])}>Alle anzeigen</button>
+			<button class="term-clear" onclick={() => (selected = [])}>{i18n.t('show_all')}</button>
 		{/if}
 	</div>
-	<div class="term-scroller">
+	<div class="term-scroller" bind:this={scroller}>
 		{#each sortedTerms as t (t.term)}
 			{@const years = t.label.match(/\((.+?)\)/)?.[1] ?? ''}
 			{@const ch = termChancellors[t.term]}
@@ -191,15 +204,10 @@
 		inset: -3px;
 		border-radius: 12px;
 		background: var(--grad);
-		opacity: 0.45;
-		filter: blur(10px);
+		opacity: 0.3;
+		filter: blur(11px);
 		z-index: -1;
 		pointer-events: none;
-		animation: aurora-spin 4s linear infinite;
-	}
-	@keyframes aurora-spin {
-		from { filter: blur(10px) hue-rotate(0deg); }
-		to   { filter: blur(10px) hue-rotate(360deg); }
 	}
 	.chip-body {
 		display: flex;

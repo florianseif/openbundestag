@@ -17,12 +17,24 @@ export const STRINGS: Dict = {
 	cta_explore: { de: 'Daten erkunden', en: 'Explore the data' },
 	nav_wortsuche: { de: 'Wortsuche', en: 'Word Search' },
 	cta_try: { de: 'Selbst ausprobieren', en: 'Try it yourself' },
+	cta_band_title: { de: 'Welches Wort verfolgst du?', en: 'Which word will you follow?' },
+	cta_band_sub: {
+		de: 'Wähle einen Begriff und sieh, wie er durch 76 Jahre Parlamentsgeschichte wandert.',
+		en: 'Pick a term and watch it travel through 76 years of parliamentary history.'
+	},
 	scroll_hint: { de: 'Scrollen', en: 'Scroll' },
 	stories_title: { de: 'Drei Schlaglichter', en: 'Three snapshots' },
 	stories_lead: {
 		de: 'Einzelne Begriffe erzählen die Geschichte des Parlaments. Drei Beispiele.',
 		en: 'Single words tell the story of the parliament. Three examples.'
 	},
+	story_open: { de: 'Im Explorer öffnen', en: 'Open in explorer' },
+	arc_aria: {
+		de: 'Parlamentsvisualisierung: Redeanteil nach Partei',
+		en: 'Parliament visualisation: share of speeches by party'
+	},
+	arc_total: { de: 'Reden insgesamt', en: 'Speeches total' },
+	arc_other: { de: 'Sonstige', en: 'Other' },
 
 	// Explorer
 	search: { de: 'Suche', en: 'Search' },
@@ -59,6 +71,16 @@ export const STRINGS: Dict = {
 		de: 'Keine Reden mit „{word}“ und den gewählten Filtern.',
 		en: 'No speeches containing “{word}” with the current filters.'
 	},
+	no_results_title: { de: 'Stille im Plenum', en: 'Silence in the chamber' },
+	try_instead: { de: 'Versuch stattdessen', en: 'Try instead' },
+	cmp_add: { de: 'Wort vergleichen', en: 'Compare a word' },
+	cmp_ph: { de: 'Zweites Wort…', en: 'Second word…' },
+	cmp_clear: { de: 'Vergleich entfernen', en: 'Remove comparison' },
+	cmp_exit: { de: 'Vergleich beenden', en: 'Exit comparison' },
+	cmp_hint: {
+		de: 'Zwei Begriffe im direkten Vergleich — Gesamtnennungen pro Zeitraum.',
+		en: 'Two terms head-to-head — total mentions per period.'
+	},
 	enter_keyword: {
 		de: 'Gib ein Stichwort ein, um zu starten.',
 		en: 'Enter a keyword to get started.'
@@ -69,6 +91,7 @@ export const STRINGS: Dict = {
 	},
 	error: { de: 'Etwas ist schiefgelaufen.', en: 'Something went wrong.' },
 	retry: { de: 'Erneut versuchen', en: 'Retry' },
+	api_unreachable: { de: 'API nicht erreichbar.', en: 'API unreachable.' },
 
 	// Drill-down
 	read_passage: { de: 'Passagen lesen', en: 'Read passages' },
@@ -187,6 +210,50 @@ export const STRINGS: Dict = {
 		de: 'Beifall noch nicht extrahiert. Führe zuerst --phase zwischenrufe aus.',
 		en: 'Applause not yet extracted. Run --phase zwischenrufe first.'
 	},
+
+	// Timeline playback
+	tl_play: { de: 'Verlauf abspielen', en: 'Play history' },
+	tl_pause: { de: 'Pause', en: 'Pause' },
+
+	// Shared UI bits that were previously hard-coded in German
+	present: { de: 'heute', en: 'present' },
+	show_all: { de: 'Alle anzeigen', en: 'Show all' },
+	wahlperiode: { de: 'Wahlperiode', en: 'Electoral term' },
+	search_person: { de: 'Person suchen…', en: 'Search person…' },
+
+	// Zwischenrufe — stat subs, teaser hints, spotlight
+	zw_times_interrupted: { de: '{n}× unterbrochen', en: 'interrupted {n}×' },
+	zw_interrupted_the: { de: 'unterbrach {n}× die …', en: 'interrupted {n}× the …' },
+	zw_adv_matrix: {
+		de: 'Wer schießt auf wen? Die Konfrontationskarte',
+		en: 'Who fires at whom? The confrontation map'
+	},
+	zw_adv_parties: { de: 'Welche Fraktion dröhnt am lautesten?', en: 'Which faction roars loudest?' },
+	zw_adv_callers: { de: 'Die 20 unruhigsten Parlamentarier', en: 'The 20 most restless MPs' },
+	zw_adv_feed: { de: 'Echte Rufe aus dem Plenum, live', en: 'Real shouts from the floor, live' },
+
+	// Beifall — teaser hints, self-vs-other short label
+	bf_adv_matrix: {
+		de: 'Wer klatscht für wen? Die Solidaritätskarte',
+		en: 'Who applauds whom? The solidarity map'
+	},
+	bf_adv_parties: { de: 'Welche Fraktion klatscht am meisten?', en: 'Which faction applauds the most?' },
+	bf_adv_self: {
+		de: 'Wer klatscht für sich selbst, wer für andere?',
+		en: 'Who applauds themselves, who applauds others?'
+	},
+	bf_own_short: { de: 'eigen', en: 'own' },
+
+	// Interruption / applause matrix — axis labels + the counted noun
+	mx_axis_calling: { de: 'rufend ↓', en: 'calling ↓' },
+	mx_axis_interrupted: { de: 'unterbrochen →', en: 'interrupted →' },
+	mx_axis_applauding: { de: 'klatschend ↓', en: 'applauding ↓' },
+	mx_axis_applauded: { de: 'beklatscht →', en: 'applauded →' },
+	mx_noun_zw: { de: 'Zwischenrufe', en: 'interjections' },
+	mx_noun_bf: { de: 'Beifallsbekundungen', en: 'applause moments' },
+	mx_legend_less: { de: 'weniger', en: 'fewer' },
+	mx_legend_more: { de: 'mehr', en: 'more' },
+	mx_diagonal: { de: 'Diagonale = eigene Fraktion', en: 'Diagonal = own faction' },
 
 	footer_data: { de: 'Datenquelle & Lizenz', en: 'Data source & licence' },
 	footer_body: {

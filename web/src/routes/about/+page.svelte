@@ -9,7 +9,7 @@
 		data_title: 'Datenquellen',
 		data: 'Die Redetexte stammen aus den offiziellen Plenarprotokollen des Deutschen Bundestags, veröffentlicht über das Open-Data-Portal des Bundestags. Als amtliche Werke (§ 5 Abs. 1 UrhG) sind sie urheberrechtsfrei. Ministerdaten (Kabinettsmitglieder und Amtszeiten) werden von Wikipedia bezogen (CC BY-SA 4.0).',
 		pipeline_title: 'Wie funktioniert es?',
-		pipeline: 'Eine Python-Pipeline lädt die XML-Quelldaten herunter, parst Redner und Redebeiträge, normalisiert Parteizugehörigkeiten und schreibt alles in eine einzige DuckDB-Datei (~2 GB). Die Webanwendung liest diese Datei live — kein Backend-Server, keine Datenbank-Infrastruktur. Das vollständige Dataset steht auf HuggingFace zum freien Download bereit.',
+		pipeline: 'Eine Python-Pipeline lädt die XML-Quelldaten herunter, parst Redner und Redebeiträge, normalisiert Parteizugehörigkeiten und schreibt alles in eine einzige DuckDB-Datei (~4 GB). Die Webanwendung liest diese Datei live — kein Backend-Server, keine Datenbank-Infrastruktur. Das vollständige Dataset steht auf HuggingFace zum freien Download bereit.',
 		stack_title: 'Technik',
 		stack_items: [
 			['Pipeline', 'Python · DuckDB · Playwright'],
@@ -31,7 +31,7 @@
 		data_title: 'Data sources',
 		data: 'Speech texts come from the official plenary protocols of the German Bundestag, published via the Bundestag Open Data portal. As official government documents (§ 5 (1) UrhG) they are in the public domain. Minister data (cabinet members and tenures) is sourced from Wikipedia (CC BY-SA 4.0).',
 		pipeline_title: 'How does it work?',
-		pipeline: 'A Python pipeline downloads the raw XML source files, parses speakers and speech segments, normalises party affiliations, and writes everything into a single DuckDB file (~2 GB). The web application reads this file directly — no backend server, no database infrastructure required. The complete dataset is freely available for download on HuggingFace.',
+		pipeline: 'A Python pipeline downloads the raw XML source files, parses speakers and speech segments, normalises party affiliations, and writes everything into a single DuckDB file (~4 GB). The web application reads this file directly — no backend server, no database infrastructure required. The complete dataset is freely available for download on HuggingFace.',
 		stack_title: 'Technology',
 		stack_items: [
 			['Pipeline', 'Python · DuckDB · Playwright'],
@@ -76,12 +76,14 @@
 		<section class="section">
 			<h2>{c.stack_title}</h2>
 			<table class="stack-table">
-				{#each c.stack_items as [label, value]}
-					<tr>
-						<td class="stack-label">{label}</td>
-						<td class="stack-value">{value}</td>
-					</tr>
-				{/each}
+				<tbody>
+					{#each c.stack_items as [label, value]}
+						<tr>
+							<td class="stack-label">{label}</td>
+							<td class="stack-value">{value}</td>
+						</tr>
+					{/each}
+				</tbody>
 			</table>
 		</section>
 

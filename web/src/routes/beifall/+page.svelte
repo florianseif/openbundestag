@@ -34,7 +34,7 @@
 		try {
 			meta = await api.beifall.meta();
 		} catch {
-			bootError = 'API nicht erreichbar.';
+			bootError = i18n.t('api_unreachable');
 			loading = false;
 			return;
 		}
@@ -217,7 +217,7 @@
 				</div>
 				<div class="adv-body">
 					<span class="adv-title">{i18n.t('bf_matrix_title')}</span>
-					<span class="adv-hint">Wer klatscht für wen? Die Solidaritätskarte</span>
+					<span class="adv-hint">{i18n.t('bf_adv_matrix')}</span>
 				</div>
 				<span class="adv-arrow">→</span>
 			</button>
@@ -241,7 +241,7 @@
 				</div>
 				<div class="adv-body">
 					<span class="adv-title">{i18n.t('bf_by_party_title')}</span>
-					<span class="adv-hint">Welche Fraktion klatscht am meisten?</span>
+					<span class="adv-hint">{i18n.t('bf_adv_parties')}</span>
 				</div>
 				<span class="adv-arrow">→</span>
 			</button>
@@ -263,7 +263,7 @@
 				</div>
 				<div class="adv-body">
 					<span class="adv-title">{i18n.t('bf_self_vs_other_title')}</span>
-					<span class="adv-hint">Wer klatscht für sich selbst, wer für andere?</span>
+					<span class="adv-hint">{i18n.t('bf_adv_self')}</span>
 				</div>
 				<span class="adv-arrow">→</span>
 			</button>
@@ -279,7 +279,12 @@
 					</div>
 				</header>
 				{#if visibleMatrix.length}
-					<InterruptionMatrix rows={visibleMatrix} />
+					<InterruptionMatrix
+						rows={visibleMatrix}
+						axisRow={i18n.t('mx_axis_applauding')}
+						axisCol={i18n.t('mx_axis_applauded')}
+						noun={i18n.t('mx_noun_bf')}
+					/>
 				{:else}
 					<p class="empty">—</p>
 				{/if}
@@ -308,7 +313,7 @@
 								<div class="svo-label">
 									<span class="svo-dot" style:background={row.color}></span>
 									<span class="svo-party">{row.party}</span>
-									<span class="svo-pct">{row.selfPct}% eigen</span>
+									<span class="svo-pct">{row.selfPct}% {i18n.t('bf_own_short')}</span>
 								</div>
 								<div class="svo-bar-wrap">
 									<div

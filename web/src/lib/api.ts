@@ -6,6 +6,7 @@
 // wake; callers should surface a "waking" state rather than an error.
 
 import { PUBLIC_API_BASE } from '$env/static/public';
+import { prefetchSearch } from './prefetch';
 import type {
 	Meta,
 	TimelinePoint,
@@ -90,15 +91,20 @@ export const api = {
 
 	// Combined explorer query — one request, one text scan, all four panels.
 	// Replaces firing total+timeline+byParty+topPoliticians in parallel.
-	search: (f: Filters, topN: number, fetcher?: FetchLike) =>
-		get<SearchResult>(
+	// Popular words under the default filters are answered instantly from a
+	// bundled, precomputed payload (see prefetch.ts) — no network, no scan.
+	search: (f: Filters, topN: number, fetcher?: FetchLike) => {
+		const cached = prefetchSearch(f, topN);
+		if (cached) return Promise.resolve(cached);
+		return get<SearchResult>(
 			`/api/search?${buildQuery(f, {
 				granularity: f.granularity,
 				count_mode: f.count_mode,
 				top_n: topN
 			})}`,
 			fetcher
-		),
+		);
+	},
 
 	timeline: (f: Filters, fetcher?: FetchLike) =>
 		get<TimelinePoint[]>(

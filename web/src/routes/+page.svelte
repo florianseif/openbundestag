@@ -78,8 +78,8 @@
 
 <section class="cta-band">
 	<div class="wrap">
-		<h2>{i18n.t('cta_try')}</h2>
-		<p class="lede">{i18n.t('hero_sub')}</p>
+		<h2>{i18n.t('cta_band_title')}</h2>
+		<p class="lede">{i18n.t('cta_band_sub')}</p>
 		<a class="btn" href="/explore">{i18n.t('nav_wortsuche')} →</a>
 	</div>
 </section>
@@ -131,7 +131,7 @@
 
 	/* ── Hero text ─────────────────────────────────────────────────────── */
 	.hero-text {
-		color: #f4f0e6;
+		color: var(--ink);
 	}
 
 	.stats-strip {
@@ -147,14 +147,14 @@
 		color: var(--accent);
 		margin-bottom: 1.1rem;
 	}
-	.sep { color: rgba(107, 145, 255, 0.4); }
+	.sep { color: color-mix(in srgb, var(--accent) 45%, transparent); }
 
 	h1 {
 		font-size: clamp(3.4rem, 8vw, 6.2rem);
 		font-weight: 700;
 		line-height: 1.0;
 		letter-spacing: -0.025em;
-		color: #f4f0e6;
+		color: var(--ink);
 		max-width: 14ch;
 		margin: 0 0 1rem;
 		/* very subtle gradient: top warm-white → slightly blue-shifted white */
@@ -167,7 +167,7 @@
 	.lede {
 		font-size: clamp(1rem, 1.8vw, 1.2rem);
 		line-height: 1.6;
-		color: rgba(244, 240, 230, 0.62);
+		color: var(--ink-2);
 		max-width: 46ch;
 		margin: 0 0 1.8rem;
 	}
@@ -184,18 +184,19 @@
 		font-size: 1.05rem;
 		padding: 0.88rem 1.2rem;
 		border-radius: 999px;
-		border: 1px solid rgba(255, 255, 255, 0.18);
-		background: rgba(255, 255, 255, 0.07);
-		color: #f4f0e6;
+		border: 1px solid var(--line-2);
+		background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+		color: var(--ink);
 		backdrop-filter: blur(8px);
 		-webkit-backdrop-filter: blur(8px);
-		transition: border-color 0.2s, background 0.2s;
+		transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 	}
-	.search input::placeholder { color: rgba(244, 240, 230, 0.38); }
+	.search input::placeholder { color: var(--ink-3); }
 	.search input:focus {
 		outline: none;
-		border-color: rgba(107, 145, 255, 0.6);
-		background: rgba(255, 255, 255, 0.11);
+		border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+		background: var(--surface-2);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
 	}
 
 	.btn-hero {
@@ -231,16 +232,16 @@
 		align-items: center;
 		padding: 0.3rem 0.85rem;
 		border-radius: 999px;
-		border: 1px solid rgba(255, 255, 255, 0.16);
-		color: rgba(244, 240, 230, 0.62);
+		border: 1px solid var(--line-2);
+		color: var(--ink-2);
 		font-size: 0.85rem;
 		font-weight: 500;
 		transition: border-color 0.18s, color 0.18s, background 0.18s;
 	}
 	.quick-chip:hover {
-		border-color: rgba(107, 145, 255, 0.55);
-		color: #f4f0e6;
-		background: rgba(107, 145, 255, 0.14);
+		border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+		color: var(--ink);
+		background: color-mix(in srgb, var(--accent) 14%, transparent);
 		text-decoration: none;
 	}
 
@@ -257,7 +258,7 @@
 		font-weight: 500;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: rgba(77, 142, 247, 0.55);
+		color: color-mix(in srgb, var(--accent) 60%, transparent);
 		text-align: center;
 	}
 
@@ -273,12 +274,12 @@
 		font-size: 0.7rem;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
-		color: rgba(244, 240, 230, 0.3);
+		color: var(--ink-3);
 	}
 	.mouse {
 		width: 22px;
 		height: 34px;
-		border: 2px solid rgba(244, 240, 230, 0.25);
+		border: 2px solid var(--line-3);
 		border-radius: 12px;
 		position: relative;
 	}
@@ -291,7 +292,7 @@
 		width: 3px;
 		height: 7px;
 		border-radius: 2px;
-		background: rgba(244, 240, 230, 0.4);
+		background: var(--ink-3);
 		animation: scroll 1.8s var(--ease) infinite;
 	}
 	@keyframes scroll {
@@ -321,6 +322,14 @@
 	.d3 { animation-delay: 0.32s; }
 	@keyframes rise {
 		to { opacity: 1; transform: none; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.reveal {
+			animation: none;
+			opacity: 1;
+			transform: none;
+		}
+		.mouse::after { animation: none; }
 	}
 
 	/* ── Stories ──────────────────────────────────────────────────────── */

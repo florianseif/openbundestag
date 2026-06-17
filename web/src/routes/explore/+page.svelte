@@ -19,6 +19,7 @@
 	} from '$lib/types';
 
 	import TimelineChart from '$lib/components/TimelineChart.svelte';
+	import CompareChart from '$lib/components/CompareChart.svelte';
 	import HBars from '$lib/components/HBars.svelte';
 	import Donut from '$lib/components/Donut.svelte';
 	import SpeechModal from '$lib/components/SpeechModal.svelte';
@@ -42,6 +43,10 @@
 		count_mode: (sp.get('mode') as CountMode) ?? 'occurrences'
 	};
 	let filters = $state<Filters>({ ...DEFAULTS });
+
+	// Curated example searches — each produces a dramatic, story-telling curve.
+	// Reused by the suggestion row and the zero-results recovery state.
+	const SUGGESTIONS = ['Schuldenbremse', 'Klimawandel', 'Migration', 'Digitalisierung', 'Rente', 'Ukraine'];
 
 	// Politician filter — scopes only the timeline and speech list, not the party/speaker panels
 	let polId = $state<number | null>(sp.get('pol') ? Number(sp.get('pol')) : null);
@@ -89,6 +94,38 @@
 
 	let topN = $state(15);
 
+	// --- word-vs-word comparison ----------------------------------------------
+	let showCompare = $state(!!sp.get('vs'));
+	let compareWord = $state(sp.get('vs') ?? '');
+	let compareTimeline = $state<TimelinePoint[]>([]);
+	let compareParty = $state<string | null>(null);
+	const compareActive = $derived(compareWord.trim().length > 0);
+
+	function aggregate(tl: TimelinePoint[], party?: string | null): { period: string; value: number }[] {
+		const src = party ? tl.filter((p) => p.party === party) : tl;
+		const m = new Map<string, number>();
+		for (const p of src) m.set(p.period, (m.get(p.period) ?? 0) + p.value);
+		return [...m.entries()]
+			.map(([period, value]) => ({ period, value }))
+			.sort((x, y) => (x.period < y.period ? -1 : 1));
+	}
+	const seriesA = $derived(aggregate(timeline, compareParty));
+	const seriesB = $derived(aggregate(compareTimeline, compareParty));
+
+	const compareParties = $derived.by(() => {
+		const set = new Set<string>();
+		for (const p of timeline) if (p.party && p.party !== 'Unknown') set.add(p.party);
+		for (const p of compareTimeline) if (p.party && p.party !== 'Unknown') set.add(p.party);
+		return [...set].sort((a, b) => partyFoundingOrder(a) - partyFoundingOrder(b));
+	});
+
+	function closeCompare() {
+		compareWord = '';
+		showCompare = false;
+		compareTimeline = [];
+		compareParty = null;
+	}
+
 	async function boot() {
 		bootError = null;
 		try {
@@ -126,6 +163,24 @@
 		debounce = setTimeout(() => runQuery(f, pid, n), 280);
 	});
 
+	// Compare word B: fetch its timeline (whole-keyword, same term/mode filters).
+	let cmpDebounce: ReturnType<typeof setTimeout>;
+	$effect(() => {
+		if (!meta) return;
+		const w = compareWord.trim();
+		const f = { ...filters, parties: [...filters.parties], terms: [...filters.terms] };
+		if (!w) { compareTimeline = []; return; }
+		clearTimeout(cmpDebounce);
+		cmpDebounce = setTimeout(async () => {
+			try {
+				const res = await api.search({ ...f, word: w, politician_id: null }, 1);
+				compareTimeline = res.timeline;
+			} catch {
+				compareTimeline = [];
+			}
+		}, 320);
+	});
+
 	async function runQuery(f: Filters, pid: number | null, n: number) {
 		if (!f.word.trim()) {
 			total = null; timeline = []; byParty = []; top = [];
@@ -161,6 +216,8 @@
 		for (const t of f.terms) url.searchParams.append('terms', String(t));
 		if (polId != null) url.searchParams.set('pol', String(polId));
 		else url.searchParams.delete('pol');
+		if (compareWord.trim()) url.searchParams.set('vs', compareWord.trim());
+		else url.searchParams.delete('vs');
 		// Legacy date params no longer used — clean them up
 		url.searchParams.delete('from');
 		url.searchParams.delete('to');
@@ -227,7 +284,7 @@ const partyBars = $derived(
 		meta
 			? [
 					{ value: meta.terms.length, label: i18n.t('hero_terms') },
-					{ value: `${meta.min_date.slice(0, 4)}–heute`, label: '' },
+					{ value: `${meta.min_date.slice(0, 4)}–${i18n.t('present')}`, label: '' },
 					{ value: meta.parties.length, label: i18n.t('hero_parties') }
 				]
 			: []
@@ -253,9 +310,8 @@ const partyBars = $derived(
 
 		<PageHero title={i18n.t('ws_title')} subtitle={i18n.t('ws_subtitle')} stats={heroStats} />
 
-		<!-- ── Filter bar ─────────────────────────────────────────────────── -->
-		<div class="filter-bar glass">
-			<!-- Search hero — large and central -->
+		<!-- ── Search section ─────────────────────────────────────────────── -->
+		<div class="search-section glass">
 			<div class="search-hero">
 				<div class="search-aurora-ring" class:has-word={filters.word.trim().length > 0}>
 					<div class="search-input-wrap">
@@ -277,15 +333,45 @@ const partyBars = $derived(
 				<button class="reset-btn" onclick={reset}>{i18n.t('reset')}</button>
 			</div>
 
+			<!-- Compare — its own prominent row -->
+			<div class="cmp-row">
+				{#if showCompare || compareWord}
+					<span class="cmp-field">
+						<svg class="cmp-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+							<path d="M3 3v8M11 3v8M1 7h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+						</svg>
+						<span class="cmp-vs">vs</span>
+						<input
+							class="cmp-input"
+							bind:value={compareWord}
+							placeholder={i18n.t('cmp_ph')}
+							maxlength={meta.keyword_max_len}
+							autocomplete="off"
+						/>
+						<button class="cmp-x" onclick={closeCompare} aria-label={i18n.t('cmp_clear')}>✕</button>
+					</span>
+				{:else}
+					<button class="cmp-add" onclick={() => (showCompare = true)}>
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+							<path d="M3 3v8M11 3v8M1 7h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+						</svg>
+						{i18n.t('cmp_add')}
+					</button>
+				{/if}
+			</div>
+
 			<!-- Suggestions -->
 			<div class="suggestions">
-				{#each ['Schuldenbremse', 'Klimawandel', 'Migration', 'Digitalisierung', 'Rente', 'Ukraine'] as w (w)}
+				{#each SUGGESTIONS as w (w)}
 					<button class="suggestion" class:active={filters.word === w} onclick={() => (filters.word = w)}>{w}</button>
 				{/each}
 			</div>
+		</div>
 
+		<!-- ── Filter bar ─────────────────────────────────────────────────── -->
+		<div class="filter-bar glass">
 			<!-- Wahlperioden term chips -->
-			<div class="term-section">
+			<div class="term-section-inner">
 				<TermFilter bind:selected={filters.terms} options={meta.terms} />
 			</div>
 
@@ -306,8 +392,10 @@ const partyBars = $derived(
 		</div>
 
 		<!-- ── Main content ──────────────────────────────────────────────── -->
-		<div class="content" class:scanning={loading}>
-			{#if loading}
+		<!-- Two loading modes: a skeleton on the very first query (no data yet),
+		     and the dim+scan beam when refreshing already-shown results. -->
+		<div class="content" class:scanning={loading && total}>
+			{#if loading && total}
 				<div class="data-scan" aria-hidden="true" transition:fade={{ duration: 200 }}>
 					<div class="scan-beam"></div>
 					<div class="scan-trail"></div>
@@ -327,13 +415,79 @@ const partyBars = $derived(
 					</svg>
 					<p>{i18n.t('enter_keyword')}</p>
 				</div>
+			{:else if loading && !total}
+				<!-- First-load skeleton: shimmer placeholders shaped like the result -->
+				<div class="skeleton" aria-hidden="true" transition:fade={{ duration: 150 }}>
+					<div class="sk-tabs">
+						<span class="sk-shimmer"></span>
+						<span class="sk-shimmer"></span>
+					</div>
+					<div class="sk-hero sk-shimmer"></div>
+					<div class="grid-2">
+						<div class="sk-panel sk-shimmer"></div>
+						<div class="sk-panel sk-shimmer"></div>
+					</div>
+				</div>
 			{:else if total && total.count === 0}
-				<div class="empty-state glass">
-					<p>{i18n.t('no_results', { word: filters.word })}</p>
+				<!-- Zero results — a designed moment, not a dead end -->
+				<div class="empty-state glass zero">
+					<svg class="zero-icon" width="120" height="40" viewBox="0 0 120 40" fill="none" aria-hidden="true">
+						<line x1="4" y1="20" x2="116" y2="20" stroke="var(--line-3)" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 6"/>
+						<circle cx="60" cy="20" r="3.5" fill="var(--accent)"/>
+					</svg>
+					<h3 class="zero-title">{i18n.t('no_results_title')}</h3>
+					<p class="zero-sub">{i18n.t('no_results', { word: filters.word })}</p>
+					<div class="zero-suggest">
+						<span class="zero-lbl">{i18n.t('try_instead')}</span>
+						{#each SUGGESTIONS.filter((w) => w !== filters.word).slice(0, 5) as w (w)}
+							<button class="suggestion" onclick={() => (filters.word = w)}>{w}</button>
+						{/each}
+					</div>
 				</div>
 			{:else}
 				{#if queryError}
 					<div class="empty-state glass"><p class="err">{queryError}</p></div>
+				{:else if compareActive}
+					<!-- word-vs-word comparison -->
+					<section class="panel hero-panel solid compare-panel">
+						<header class="p-head">
+							<div>
+								<h3 class="cmp-title">{filters.word} <span class="cmp-vs-h">vs</span> {compareWord}</h3>
+								<p class="p-hint">{i18n.t('cmp_hint')}</p>
+							</div>
+							<button class="reset-btn" onclick={closeCompare}>{i18n.t('cmp_exit')}</button>
+						</header>
+						<!-- Party filter — single-select -->
+						{#if compareParties.length > 1}
+							<div class="cmp-parties">
+								<button
+									class="cmp-party-chip"
+									class:on={compareParty === null}
+									onclick={() => (compareParty = null)}
+								>{i18n.t('all_parties')}</button>
+								{#each compareParties as p (p)}
+									<button
+										class="cmp-party-chip"
+										class:on={compareParty === p}
+										style:--chip-c={partyColor(p)}
+										onclick={() => (compareParty = compareParty === p ? null : p)}
+									>
+										<span class="cmp-party-dot" style:background={partyColor(p)}></span>
+										{p}
+									</button>
+								{/each}
+							</div>
+						{/if}
+						{#if seriesB.length}
+							<CompareChart
+								a={{ word: filters.word, color: 'var(--accent)', series: seriesA }}
+								b={{ word: compareWord, color: 'var(--spark)', series: seriesB }}
+								{valueLabel}
+							/>
+						{:else}
+							<p class="empty">{i18n.t('no_results', { word: compareWord })}</p>
+						{/if}
+					</section>
 				{:else}
 					<!-- Timeline hero with flip to speech list -->
 					<div class="hero-wrap">
@@ -429,7 +583,7 @@ const partyBars = $derived(
 							<header class="p-head"><h3>{i18n.t('by_party_title')}</h3></header>
 							{#if partyBars.length}
 								<div class="party-body">
-									<Donut slices={donutSlices} />
+									<div class="donut-cell"><Donut slices={donutSlices} /></div>
 									<HBars bars={partyBars} valueLabel={i18n.t('speeches')} />
 								</div>
 							{:else}
@@ -499,12 +653,24 @@ const partyBars = $derived(
 		padding-bottom: 3rem;
 	}
 
+	/* ── Search section — visually separated ───────────────────────────── */
+	.search-section {
+		padding: 1.5rem 1.5rem 1.2rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
 	/* ── Filter bar ────────────────────────────────────────────────────── */
 	.filter-bar {
-		padding: 1.4rem 1.5rem 1.1rem;
+		padding: 1rem 1.5rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.85rem;
+	}
+	.term-section-inner {
+		padding-bottom: 0.6rem;
+		border-bottom: 1px solid var(--line);
 	}
 
 	/* Search hero — large, prominent, full-width */
@@ -540,20 +706,14 @@ const partyBars = $derived(
 		border-radius: 17px;
 		background: var(--grad);
 		opacity: 0;
-		filter: blur(10px);
+		filter: blur(12px);
 		transition: opacity 0.45s;
 		z-index: 0;
-		animation: aurora-spin 4s linear infinite;
 	}
 	.search-aurora-ring:focus-within::before,
 	.search-aurora-ring.has-word::before { opacity: 1; }
-	.search-aurora-ring:focus-within::after { opacity: 0.45; }
-	.search-aurora-ring.has-word:focus-within::after { opacity: 0.6; }
-
-	@keyframes aurora-spin {
-		from { filter: blur(10px) hue-rotate(0deg); }
-		to   { filter: blur(10px) hue-rotate(360deg); }
-	}
+	.search-aurora-ring:focus-within::after { opacity: 0.4; }
+	.search-aurora-ring.has-word:focus-within::after { opacity: 0.5; }
 
 	.search-input-wrap {
 		position: relative;
@@ -639,10 +799,120 @@ const partyBars = $derived(
 		background: color-mix(in srgb, var(--accent) 10%, transparent);
 	}
 
-	/* ── Wahlperioden chips ─────────────────────────────────────────────── */
-	.term-section {
-		padding-top: 0.75rem;
-		border-top: 1px solid var(--line);
+	/* ── Compare control ────────────────────────────────────────────────── */
+	.cmp-row {
+		display: flex;
+		align-items: center;
+	}
+	.cmp-add {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		font: inherit;
+		font-size: 0.82rem;
+		font-weight: 600;
+		padding: 0.45rem 1rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--spark) 45%, var(--line-2));
+		background: color-mix(in srgb, var(--spark) 6%, transparent);
+		color: var(--spark);
+		cursor: pointer;
+		transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+	}
+	.cmp-add:hover {
+		background: color-mix(in srgb, var(--spark) 14%, transparent);
+		border-color: var(--spark);
+		box-shadow: 0 0 12px color-mix(in srgb, var(--spark) 20%, transparent);
+	}
+	.cmp-add svg { opacity: 0.8; }
+	.cmp-field {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.35rem 0.5rem 0.35rem 0.65rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--spark) 55%, var(--line-2));
+		background: color-mix(in srgb, var(--spark) 8%, transparent);
+	}
+	.cmp-icon { color: var(--spark); opacity: 0.7; flex-shrink: 0; }
+	.cmp-vs {
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--spark);
+	}
+	.cmp-input {
+		font: inherit;
+		font-size: 0.9rem;
+		background: none;
+		border: none;
+		outline: none;
+		color: var(--ink);
+		width: 10rem;
+		padding: 0.2rem 0;
+	}
+	.cmp-input::placeholder { color: var(--ink-3); }
+	.cmp-x {
+		border: none;
+		background: none;
+		cursor: pointer;
+		color: var(--ink-3);
+		font-size: 0.75rem;
+		line-height: 1;
+		padding: 0.25rem 0.3rem;
+	}
+	.cmp-x:hover { color: var(--spark); }
+	.compare-panel .cmp-title {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+	.cmp-vs-h {
+		font-family: var(--sans);
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+	/* Compare party chips — single-select filter row */
+	.cmp-parties {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		margin-bottom: 1rem;
+	}
+	.cmp-party-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font: inherit;
+		font-size: 0.74rem;
+		font-weight: 500;
+		padding: 0.25rem 0.7rem;
+		border-radius: 999px;
+		border: 1px solid var(--line-2);
+		background: none;
+		color: var(--ink-3);
+		cursor: pointer;
+		transition: color 0.15s, border-color 0.15s, background 0.15s;
+	}
+	.cmp-party-chip:hover {
+		color: var(--ink);
+		border-color: var(--chip-c, var(--line-3));
+	}
+	.cmp-party-chip.on {
+		color: var(--ink);
+		border-color: var(--chip-c, var(--accent));
+		background: color-mix(in srgb, var(--chip-c, var(--accent)) 12%, transparent);
+	}
+	.cmp-party-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex: none;
 	}
 
 	/* Controls row — count mode only */
@@ -942,9 +1212,10 @@ const partyBars = $derived(
 		gap: 1.5rem;
 		align-items: start;
 	}
-	.party-body > :first-child {
+	.party-body > .donut-cell {
 		justify-self: center;
-		max-width: 200px;
+		max-width: 220px;
+		width: 100%;
 	}
 
 	.empty, .err { color: var(--ink-3); padding: 2rem 0; text-align: center; }
@@ -954,6 +1225,71 @@ const partyBars = $derived(
 		display: flex; flex-direction: column;
 		align-items: center; gap: 1.2rem;
 		color: var(--ink-3); text-align: center;
+	}
+
+	/* ── Zero-results designed moment ──────────────────────────────────── */
+	.empty-state.zero { gap: 0.85rem; }
+	.zero-icon { margin-bottom: 0.4rem; opacity: 0.9; }
+	.zero-title {
+		margin: 0;
+		font-family: var(--display);
+		font-size: 1.35rem;
+		color: var(--ink);
+		letter-spacing: -0.01em;
+	}
+	.zero-sub { margin: 0; max-width: 36ch; color: var(--ink-3); }
+	.zero-suggest {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.4rem;
+		margin-top: 0.6rem;
+	}
+	.zero-lbl {
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		margin-right: 0.15rem;
+	}
+
+	/* ── First-load skeleton ───────────────────────────────────────────── */
+	.skeleton {
+		display: flex;
+		flex-direction: column;
+		gap: 1.4rem;
+	}
+	.sk-tabs { display: flex; gap: 0.5rem; }
+	.sk-tabs .sk-shimmer { width: 130px; height: 38px; border-radius: 999px; }
+	.sk-hero { height: 420px; border-radius: 14px; }
+	.sk-panel { height: 280px; border-radius: 14px; }
+	.sk-shimmer {
+		position: relative;
+		overflow: hidden;
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+	}
+	.sk-shimmer::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		transform: translateX(-100%);
+		background: linear-gradient(
+			90deg,
+			transparent 0%,
+			color-mix(in srgb, var(--accent) 9%, transparent) 45%,
+			color-mix(in srgb, var(--spark, var(--accent)) 12%, transparent) 55%,
+			transparent 100%
+		);
+		animation: sk-sweep 1.5s ease-in-out infinite;
+	}
+	@keyframes sk-sweep {
+		to { transform: translateX(100%); }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.sk-shimmer::after { animation: none; }
 	}
 
 	/* ── Responsive ────────────────────────────────────────────────────── */

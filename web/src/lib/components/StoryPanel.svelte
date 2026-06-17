@@ -68,13 +68,19 @@
 			</div>
 		</div>
 	</div>
-	<div class="viz" style:--c={color}>
+	<a
+		class="viz"
+		style:--c={color}
+		href="/explore?word={encodeURIComponent(story.word)}"
+		aria-label="{i18n.t('story_open')}: {story.word}"
+	>
 		<Sparkline series={story.series} {color} {progress} />
 		<div class="axis">
 			<span>{story.series[0]?.year}</span>
 			<span>{story.series[story.series.length - 1]?.year}</span>
 		</div>
-	</div>
+		<span class="viz-cta">{i18n.t('story_open')} →</span>
+	</a>
 </article>
 
 <style>
@@ -124,6 +130,7 @@
 		color: var(--ink-3);
 	}
 	.viz {
+		position: relative;
 		height: 240px;
 		border-radius: var(--radius);
 		background: linear-gradient(180deg, color-mix(in srgb, var(--c) 7%, var(--card)), var(--card));
@@ -131,6 +138,39 @@
 		padding: 1rem 1rem 0.4rem;
 		display: flex;
 		flex-direction: column;
+		text-decoration: none;
+		transition: transform 0.28s var(--spring), border-color 0.28s var(--ease), box-shadow 0.28s var(--ease);
+	}
+	.viz:hover {
+		transform: translateY(-4px);
+		border-color: color-mix(in srgb, var(--c) 50%, var(--line));
+		box-shadow: 0 18px 44px -14px color-mix(in srgb, var(--c) 45%, transparent);
+	}
+	.viz-cta {
+		position: absolute;
+		right: 1rem;
+		top: 0.9rem;
+		font-size: 0.74rem;
+		font-weight: 600;
+		letter-spacing: 0.01em;
+		color: var(--c);
+		opacity: 0;
+		transform: translateY(4px);
+		transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+		pointer-events: none;
+	}
+	.viz:hover .viz-cta,
+	.viz:focus-visible .viz-cta {
+		opacity: 1;
+		transform: none;
+	}
+	.viz:focus-visible {
+		outline: 2px solid color-mix(in srgb, var(--c) 70%, var(--line-3));
+		outline-offset: 3px;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.viz { transition: none; }
+		.viz:hover { transform: none; }
 	}
 	.viz :global(svg) {
 		flex: 1;

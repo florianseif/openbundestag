@@ -76,7 +76,7 @@
 		try {
 			meta = await api.zwischenrufe.meta();
 		} catch {
-			bootError = 'API nicht erreichbar.';
+			bootError = i18n.t('api_unreachable');
 			loading = false;
 			return;
 		}
@@ -202,7 +202,7 @@
 						<span class="lead-dot"></span>
 						{topCallerParty.caller_party}
 					</span>
-					<span class="m-sub">{formatNumber(topCallerParty.n, i18n.lang)} Rufe</span>
+					<span class="m-sub">{formatNumber(topCallerParty.n, i18n.lang)} {i18n.t('zw_calls')}</span>
 					<span class="m-cap">{i18n.t('zw_most_active_party')}</span>
 				</div>
 			{/if}
@@ -212,7 +212,7 @@
 						<span class="lead-dot"></span>
 						{topTarget.party}
 					</span>
-					<span class="m-sub">{formatNumber(topTarget.n, i18n.lang)} Mal unterbrochen</span>
+					<span class="m-sub">{i18n.t('zw_times_interrupted', { n: formatNumber(topTarget.n, i18n.lang) })}</span>
 					<span class="m-cap">{i18n.t('zw_most_interrupted')}</span>
 				</div>
 			{/if}
@@ -247,7 +247,7 @@
 				</div>
 				<div class="adv-body">
 					<span class="adv-title">{i18n.t('zw_matrix_title')}</span>
-					<span class="adv-hint">Wer schießt auf wen? Die Konfrontationskarte</span>
+					<span class="adv-hint">{i18n.t('zw_adv_matrix')}</span>
 				</div>
 				<span class="adv-arrow">→</span>
 			</button>
@@ -271,7 +271,7 @@
 				</div>
 				<div class="adv-body">
 					<span class="adv-title">{i18n.t('zw_most_active_party')}</span>
-					<span class="adv-hint">Welche Partei dröhnt am lautesten?</span>
+					<span class="adv-hint">{i18n.t('zw_adv_parties')}</span>
 				</div>
 				<span class="adv-arrow">→</span>
 			</button>
@@ -293,7 +293,7 @@
 				</div>
 				<div class="adv-body">
 					<span class="adv-title">{i18n.t('zw_top_title')}</span>
-					<span class="adv-hint">Die 20 unruhigsten Parlamentarier</span>
+					<span class="adv-hint">{i18n.t('zw_adv_callers')}</span>
 				</div>
 				<span class="adv-arrow">→</span>
 			</button>
@@ -317,7 +317,7 @@
 				</div>
 				<div class="adv-body">
 					<span class="adv-title">{i18n.t('zw_feed_title')}</span>
-					<span class="adv-hint">Echte Rufe aus dem Plenum, live</span>
+					<span class="adv-hint">{i18n.t('zw_adv_feed')}</span>
 				</div>
 				<span class="adv-arrow">→</span>
 			</button>
@@ -339,7 +339,7 @@
 						<input
 							class="p-search"
 							type="search"
-							placeholder="Person suchen…"
+							placeholder={i18n.t('search_person')}
 							bind:value={callerNameSearch}
 						/>
 					</div>
@@ -356,7 +356,7 @@
 									{#if callerInfo.party}
 										<span class="spotlight-party" style:background={partyColor(callerInfo.party)}>{callerInfo.party}</span>
 									{/if}
-									<span class="spotlight-count">unterbrach {callerSamples.length}× die…</span>
+									<span class="spotlight-count">{i18n.t('zw_interrupted_the', { n: callerSamples.length })}</span>
 								</p>
 							{/if}
 							<HBars bars={callerTargetBars} valueLabel={i18n.t('zw_calls')} />
