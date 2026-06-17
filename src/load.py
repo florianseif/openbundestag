@@ -335,6 +335,99 @@ def finalize_db(
     print(f"[finalize] Done → {db_path}", flush=True)
 
 
+# Tables carried over verbatim by optimize_db (everything except speeches,
+# which is rebuilt lean, and speech_texts, which is (re)materialised).
+_CARRY_TABLES = [
+    "speakers", "ministers", "minister_roles", "zwischenrufe",
+    "politicians", "politician_terms", "session_files",
+    "legacy_match_unresolved",
+]
+
+# Canonical display-name view (one row per member) — mirrors stammdaten.build_registry
+# so the optimized DB keeps top-politician name resolution working.
+_REGISTRY_VIEW_SQL = """
+    CREATE OR REPLACE VIEW _registry_names AS
+    SELECT id, trim(first_name) || ' ' || trim(last_name) AS name
+    FROM (
+        SELECT id, first_name, last_name,
+               row_number() OVER (
+                   PARTITION BY id
+                   ORDER BY (name_bis = '') DESC, name_von DESC
+               ) AS rn
+        FROM politicians
+    )
+    WHERE rn = 1
+"""
+
+
+def optimize_db(db_path: str | Path) -> None:
+    """Rewrite a finalized DB into the compact, fast "Option C" layout.
+
+    Run as the LAST pipeline phase. It produces a fresh, tightly-packed file —
+    the only reliable way to actually shrink the on-disk size, since DuckDB
+    reclaims free blocks for reuse but never shrinks the file in place after the
+    big in-place UPDATEs/DROP COLUMN that finalize performs.
+
+    Resulting layout:
+      * ``speeches``     — metadata + ``faction_normalized`` + ``search_text``
+                           (lowercased). No inline ``speech_content``, so the
+                           per-keyword scan reads only the lean search column.
+      * ``speech_texts`` — ``(id, speech_content)`` original-cased text, read
+                           only by the drill-down reader.
+
+    Idempotent and input-agnostic: works whether the source keeps
+    ``speech_content`` inline (default finalize) or already in a side table
+    (``--text-table`` finalize). Writes ``<db>.optimizing`` then atomically
+    renames it over ``db_path``.
+    """
+    src = Path(db_path)
+    tmp = src.with_suffix(src.suffix + ".optimizing")
+    for p in (tmp, Path(str(tmp) + ".wal")):
+        if p.exists():
+            p.unlink()
+
+    with duckdb.connect(src, read_only=True) as probe:
+        speech_cols = {r[1] for r in probe.execute("PRAGMA table_info('speeches')").fetchall()}
+        tables = {r[0] for r in probe.execute(
+            "SELECT table_name FROM information_schema.tables"
+        ).fetchall()}
+    if "search_text" not in speech_cols:
+        raise RuntimeError(
+            "optimize requires a finalized DB (speeches.search_text missing). "
+            "Run:  uv run run.py --phase finalize"
+        )
+    text_inline = "speech_content" in speech_cols
+    has_text_side = "speech_texts" in tables
+
+    lean_cols = ", ".join(c for c in speech_cols if c != "speech_content")
+    con = duckdb.connect(tmp)
+    try:
+        con.execute("PRAGMA threads=8")
+        con.execute(f"ATTACH '{src.as_posix()}' AS s (READ_ONLY)")
+        con.execute(f"CREATE TABLE speeches AS SELECT {lean_cols} FROM s.speeches")
+        if text_inline:
+            con.execute("CREATE TABLE speech_texts AS SELECT id, speech_content FROM s.speeches")
+        elif has_text_side:
+            con.execute("CREATE TABLE speech_texts AS SELECT id, speech_content FROM s.speech_texts")
+        else:
+            raise RuntimeError("No speech_content found inline or in speech_texts.")
+        con.execute("CREATE UNIQUE INDEX idx_speech_texts_id ON speech_texts(id)")
+        for t in _CARRY_TABLES:
+            if t in tables:
+                con.execute(f"CREATE TABLE {t} AS SELECT * FROM s.{t}")
+        if "politicians" in tables:
+            con.execute(_REGISTRY_VIEW_SQL)
+        con.execute("CHECKPOINT")
+    finally:
+        con.close()
+
+    size_gb = tmp.stat().st_size / 1e9
+    src.unlink(missing_ok=True)
+    Path(str(src) + ".wal").unlink(missing_ok=True)
+    tmp.rename(src)
+    print(f"[optimize] Compact Option-C DB written → {src} ({size_gb:.2f} GB)", flush=True)
+
+
 def _delete_guests(
     conn: duckdb.DuckDBPyConnection,
     db_path: str | Path,

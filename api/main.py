@@ -169,6 +169,39 @@ def timeline(
     ))
 
 
+@app.get("/api/search")
+def search(
+    word: str,
+    parties: list[str] = Query(default=[]),
+    terms: list[int] = Query(default=[]),
+    politician_id: int | None = None,
+    granularity: str = Query("Monthly"),
+    count_mode: str = Query("speeches"),
+    top_n: int = Query(15, ge=1, le=50),
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    """Combined explorer payload (total + timeline + by-party + by-term +
+    top-politicians) computed in a single text scan. Replaces the four parallel
+    requests the explorer used to fire per keystroke."""
+    word = _clean_word(word)
+    gran = "Monthly" if granularity.lower().startswith("month") else "Quarterly"
+    mode = "occurrences" if count_mode.lower().startswith("occ") else "speeches"
+    key = ("search", word, tuple(parties), tuple(terms), politician_id, gran, mode, top_n, date_from, date_to)
+
+    def build() -> dict:
+        res = q.search(con(), word, parties, terms, politician_id, gran, mode, top_n, date_from, date_to)
+        return {
+            "total": {k: _jsonable(v) for k, v in res["total"].items()},
+            "timeline": _records(res["timeline"]),
+            "by_party": _records(res["by_party"]),
+            "by_term": _records(res["by_term"]),
+            "top_politicians": _records(res["top_politicians"]),
+        }
+
+    return _cached(key, build)
+
+
 @app.get("/api/by-party")
 def by_party(
     word: str,

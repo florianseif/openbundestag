@@ -19,7 +19,7 @@ import click
     show_default=True,
     type=click.Choice(
         ["extract", "transform", "load", "ministers", "finalize",
-         "stammdaten", "legacy-match", "zwischenrufe", "all"],
+         "stammdaten", "legacy-match", "zwischenrufe", "optimize", "all"],
         case_sensitive=False,
     ),
     help="Pipeline phase to execute.",
@@ -147,6 +147,16 @@ def main(
             zdf = extract_legacy_term(db, term)
 
         load_zwischenrufe(db, zdf, term)
+
+    # ------------------------------------------------------------------
+    # OPTIMIZE: rewrite the finalized DB into the compact, fast layout
+    # (lean speeches + search_text; original text in speech_texts). Runs
+    # LAST so every earlier phase's writes are included; shrinks the file.
+    # ------------------------------------------------------------------
+    if phase in ("optimize", "all"):
+        from src.load import optimize_db
+
+        optimize_db(db)
 
     click.echo("Pipeline finished.")
 

@@ -13,6 +13,7 @@ import type {
 	TermCount,
 	PoliticianCount,
 	Totals,
+	SearchResult,
 	Politician,
 	SpeechPage,
 	SpeechFull,
@@ -84,6 +85,18 @@ export const api = {
 	politicians: (q: string, limit = 50, fetcher?: FetchLike) =>
 		get<Politician[]>(
 			`/api/politicians?${new URLSearchParams({ q, limit: String(limit) })}`,
+			fetcher
+		),
+
+	// Combined explorer query — one request, one text scan, all four panels.
+	// Replaces firing total+timeline+byParty+topPoliticians in parallel.
+	search: (f: Filters, topN: number, fetcher?: FetchLike) =>
+		get<SearchResult>(
+			`/api/search?${buildQuery(f, {
+				granularity: f.granularity,
+				count_mode: f.count_mode,
+				top_n: topN
+			})}`,
 			fetcher
 		),
 
