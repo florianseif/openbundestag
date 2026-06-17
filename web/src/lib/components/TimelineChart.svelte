@@ -160,52 +160,84 @@
 		}
 		return best && best.value > 0 ? best : null;
 	});
-	// Clamp the peak label inside the plot so it never clips at the edges/top.
+	// A clean annotation pill, clamped inside the plot so it never clips.
 	const peakLabel = $derived.by(() => {
 		if (!peak) return null;
 		const px = x(new Date(peak.period));
 		const py = y(peak.value);
-		const lx = Math.min(cw - m.r - 48, Math.max(m.l + 48, px));
-		const above = py - 30 > m.t;
-		const ly = above ? py - 16 : py + 22;
-		return {
-			px,
-			py,
-			lx,
-			ly,
-			above,
-			year: fmtYear(new Date(peak.period)),
-			value: peak.value,
-			color: partyColor(peak.party)
-		};
+		const text = `${i18n.t('tl_peak')} · ${fmtYear(new Date(peak.period))} · ${formatNumber(peak.value, i18n.lang)}`;
+		const w = Math.round(text.length * 5.9 + 36);
+		const h = 22;
+		const cx = Math.min(cw - m.r - w / 2 - 2, Math.max(m.l + w / 2 + 2, px));
+		// Prefer the pill above the vertex; flip below if it would clip the top.
+		const above = py - 42 > m.t;
+		const cy = above ? py - 32 : py + 32;
+		return { px, py, cx, cy, w, h, above, text, color: partyColor(peak.party) };
 	});
 
-	// --- "play through history" scrubber: drives hoverIdx across the periods ---
+	// --- "play through history": draws the lines in from past → present -------
+	// A clip rect sweeps left→right so the lines appear to be drawn over time,
+	// led by a glowing scan line + the moving head of each visible series.
 	let playing = $state(false);
+	let playT = $state(0); // 0..1 progress along the time axis
 	let playRaf = 0;
 	const reduceMotion =
 		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const plotW = $derived(Math.max(0, cw - m.l - m.r));
+	const revealW = $derived(playT * plotW);
+	const scanX = $derived(m.l + revealW);
+	// The bright moving head of each visible line, interpolated at the scan time.
+	const leadingPoints = $derived.by(() => {
+		if (!playing || dates.length < 2) return [];
+		const t0 = +dates[0];
+		const t1 = +dates[dates.length - 1];
+		const ct = t0 + playT * (t1 - t0);
+		let i1 = dates.findIndex((d) => +d >= ct);
+		if (i1 <= 0) i1 = 1;
+		const i0 = i1 - 1;
+		const span = +dates[i1] - +dates[i0] || 1;
+		const f = (ct - +dates[i0]) / span;
+		const px = x(new Date(ct));
+		return visible
+			.map((party) => {
+				const v0 = lookup.get(`${periods[i0]}|${party}`) ?? 0;
+				const v1 = lookup.get(`${periods[i1]}|${party}`) ?? 0;
+				const v = v0 + (v1 - v0) * f;
+				return { party, x: px, y: y(v), v, color: partyColor(party) };
+			})
+			.filter((p) => p.v > 0);
+	});
 	function stopPlay() {
 		playing = false;
 		cancelAnimationFrame(playRaf);
 	}
+	const easeInOut = (t: number) =>
+		t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 	function togglePlay() {
 		if (playing) return stopPlay();
 		const N = periods.length;
 		if (N < 2) return;
 		if (reduceMotion) {
+			// No animation: just settle on the most recent period.
 			hoverIdx = N - 1;
 			return;
 		}
 		playing = true;
-		const dur = Math.min(9000, Math.max(3500, N * 170));
+		playT = 0;
+		const dur = Math.min(9000, Math.max(4200, N * 230));
 		const start = performance.now();
 		const tick = (now: number) => {
 			if (!playing) return;
-			const t = Math.min(1, (now - start) / dur);
-			hoverIdx = Math.round(t * (N - 1));
-			if (t < 1) playRaf = requestAnimationFrame(tick);
-			else playing = false;
+			const raw = Math.min(1, (now - start) / dur);
+			playT = easeInOut(raw);
+			const ct = +dates[0] + playT * (+dates[dates.length - 1] - +dates[0]);
+			hoverIdx = bis(dates, new Date(ct));
+			if (raw < 1) {
+				playRaf = requestAnimationFrame(tick);
+			} else {
+				playing = false;
+				hoverIdx = null; // settle into the static view (peak re-appears)
+			}
 		};
 		playRaf = requestAnimationFrame(tick);
 	}
@@ -270,6 +302,9 @@
 			</filter>
 			<clipPath id="strip-{uid}">
 				<rect x={m.l} y={GOV_STRIP_Y} width={Math.max(0, cw - m.l - m.r)} height={GOV_STRIP_H} />
+			</clipPath>
+			<clipPath id="reveal-{uid}">
+				<rect x={m.l} y="0" width={revealW} height={H} />
 			</clipPath>
 		</defs>
 
@@ -339,7 +374,7 @@
 			{/if}
 		{/each}
 
-		<g filter="url(#glow-{uid})">
+		<g filter="url(#glow-{uid})" clip-path={playing ? `url(#reveal-${uid})` : undefined}>
 			{#each visible as party (party)}
 				<path
 					d={linePath(party)}
@@ -356,23 +391,47 @@
 		</g>
 
 		<!-- peak annotation: marks the moment the word was most discussed -->
-		{#if peakLabel && hoverIdx == null}
+		{#if peakLabel && hoverIdx == null && !playing}
 			<g class="peak" pointer-events="none">
-				<line x1={peakLabel.px} x2={peakLabel.px} y1={peakLabel.py} y2={peakLabel.ly + (peakLabel.above ? 4 : -4)} class="peak-stem" stroke={peakLabel.color} />
-				<circle cx={peakLabel.px} cy={peakLabel.py} r="9" fill="none" stroke={peakLabel.color} stroke-opacity="0.35" />
-				<circle cx={peakLabel.px} cy={peakLabel.py} r="4.5" fill={peakLabel.color} stroke="var(--surface)" stroke-width="2" />
+				<line
+					x1={peakLabel.px}
+					y1={peakLabel.py}
+					x2={peakLabel.cx}
+					y2={peakLabel.above ? peakLabel.cy + peakLabel.h / 2 : peakLabel.cy - peakLabel.h / 2}
+					class="peak-stem"
+					stroke={peakLabel.color}
+				/>
+				<circle cx={peakLabel.px} cy={peakLabel.py} r="8" fill="none" stroke={peakLabel.color} stroke-opacity="0.3" />
+				<circle cx={peakLabel.px} cy={peakLabel.py} r="4" fill={peakLabel.color} stroke="var(--bg)" stroke-width="1.6" />
+				<rect
+					x={peakLabel.cx - peakLabel.w / 2}
+					y={peakLabel.cy - peakLabel.h / 2}
+					width={peakLabel.w}
+					height={peakLabel.h}
+					rx={peakLabel.h / 2}
+					class="peak-pill"
+				/>
+				<circle cx={peakLabel.cx - peakLabel.w / 2 + 12} cy={peakLabel.cy} r="3" fill={peakLabel.color} />
 				<text
-					x={peakLabel.lx}
-					y={peakLabel.ly}
+					x={peakLabel.cx - peakLabel.w / 2 + 22}
+					y={peakLabel.cy}
 					class="peak-label"
-					text-anchor="middle"
-					dominant-baseline={peakLabel.above ? 'auto' : 'hanging'}
-				>{i18n.t('tl_peak')} {peakLabel.year} · {formatNumber(peakLabel.value, i18n.lang)}</text>
+					text-anchor="start"
+					dominant-baseline="central"
+				>{peakLabel.text}</text>
 			</g>
 		{/if}
 
+		<!-- play-through: glowing scan line + moving line heads (past → present) -->
+		{#if playing}
+			<line x1={scanX} x2={scanX} y1={m.t} y2={H - m.b} class="scan-line" />
+			{#each leadingPoints as p (p.party)}
+				<circle cx={p.x} cy={p.y} r="4.5" fill={p.color} stroke="var(--bg)" stroke-width="1.5" filter="url(#glow-{uid})" class="scan-head" />
+			{/each}
+		{/if}
+
 		<!-- hover crosshair + markers -->
-		{#if hoverRows}
+		{#if hoverRows && !playing}
 			<line
 				x1={x(hoverRows.date)}
 				x2={x(hoverRows.date)}
@@ -504,20 +563,40 @@
 		box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 	}
 	/* Peak annotation */
+	.peak {
+		animation: peak-in 0.45s var(--ease) both;
+	}
+	@keyframes peak-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
 	.peak-stem {
 		stroke-width: 1;
-		stroke-opacity: 0.5;
+		stroke-opacity: 0.45;
 		stroke-dasharray: 2 3;
+	}
+	.peak-pill {
+		fill: color-mix(in srgb, var(--surface) 90%, transparent);
+		stroke: var(--line-2);
+		stroke-width: 1;
 	}
 	.peak-label {
 		fill: var(--ink);
 		font-family: var(--sans);
 		font-size: 0.7rem;
 		font-weight: 600;
-		paint-order: stroke;
-		stroke: var(--bg);
-		stroke-width: 3px;
-		stroke-linejoin: round;
+		letter-spacing: 0.01em;
+	}
+	/* Play-through scan */
+	.scan-line {
+		stroke: var(--accent);
+		stroke-width: 1.5;
+		stroke-opacity: 0.85;
+		filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent));
 	}
 	.chip {
 		display: inline-flex;

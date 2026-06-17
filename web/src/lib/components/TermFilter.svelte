@@ -33,8 +33,20 @@
 		selected = [term];
 	}
 
-	// Terms sorted newest-first for the chip row
-	const sortedTerms = $derived([...options].sort((a, b) => b.term - a.term));
+	// Oldest→newest, left→right — matching the timeline's time axis (past on the
+	// left, recent on the right) so the filter and the chart read the same way.
+	const sortedTerms = $derived([...options].sort((a, b) => a.term - b.term));
+
+	// The newest term sits on the right, so default-scroll there: the most recent
+	// Wahlperiode (the common starting point) is visible without scrolling.
+	let scroller: HTMLDivElement | undefined = $state();
+	let didInitScroll = false;
+	$effect(() => {
+		if (scroller && !didInitScroll && sortedTerms.length) {
+			scroller.scrollLeft = scroller.scrollWidth;
+			didInitScroll = true;
+		}
+	});
 
 	// --- chancellor lookup for term chips -------------------------------------
 	function govPartyToDisplay(code: string): string {
@@ -83,7 +95,7 @@
 			<button class="term-clear" onclick={() => (selected = [])}>{i18n.t('show_all')}</button>
 		{/if}
 	</div>
-	<div class="term-scroller">
+	<div class="term-scroller" bind:this={scroller}>
 		{#each sortedTerms as t (t.term)}
 			{@const years = t.label.match(/\((.+?)\)/)?.[1] ?? ''}
 			{@const ch = termChancellors[t.term]}
