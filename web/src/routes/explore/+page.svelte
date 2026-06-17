@@ -98,23 +98,32 @@
 	let showCompare = $state(!!sp.get('vs'));
 	let compareWord = $state(sp.get('vs') ?? '');
 	let compareTimeline = $state<TimelinePoint[]>([]);
+	let compareParty = $state<string | null>(null);
 	const compareActive = $derived(compareWord.trim().length > 0);
 
-	// Aggregate a per-party timeline into one all-party series per period.
-	function aggregate(tl: TimelinePoint[]): { period: string; value: number }[] {
+	function aggregate(tl: TimelinePoint[], party?: string | null): { period: string; value: number }[] {
+		const src = party ? tl.filter((p) => p.party === party) : tl;
 		const m = new Map<string, number>();
-		for (const p of tl) m.set(p.period, (m.get(p.period) ?? 0) + p.value);
+		for (const p of src) m.set(p.period, (m.get(p.period) ?? 0) + p.value);
 		return [...m.entries()]
 			.map(([period, value]) => ({ period, value }))
 			.sort((x, y) => (x.period < y.period ? -1 : 1));
 	}
-	const seriesA = $derived(aggregate(timeline));
-	const seriesB = $derived(aggregate(compareTimeline));
+	const seriesA = $derived(aggregate(timeline, compareParty));
+	const seriesB = $derived(aggregate(compareTimeline, compareParty));
+
+	const compareParties = $derived.by(() => {
+		const set = new Set<string>();
+		for (const p of timeline) if (p.party && p.party !== 'Unknown') set.add(p.party);
+		for (const p of compareTimeline) if (p.party && p.party !== 'Unknown') set.add(p.party);
+		return [...set].sort((a, b) => partyFoundingOrder(a) - partyFoundingOrder(b));
+	});
 
 	function closeCompare() {
 		compareWord = '';
 		showCompare = false;
 		compareTimeline = [];
+		compareParty = null;
 	}
 
 	async function boot() {
@@ -301,9 +310,8 @@ const partyBars = $derived(
 
 		<PageHero title={i18n.t('ws_title')} subtitle={i18n.t('ws_subtitle')} stats={heroStats} />
 
-		<!-- ── Filter bar ─────────────────────────────────────────────────── -->
-		<div class="filter-bar glass">
-			<!-- Search hero — large and central -->
+		<!-- ── Search section ─────────────────────────────────────────────── -->
+		<div class="search-section glass">
 			<div class="search-hero">
 				<div class="search-aurora-ring" class:has-word={filters.word.trim().length > 0}>
 					<div class="search-input-wrap">
@@ -325,13 +333,13 @@ const partyBars = $derived(
 				<button class="reset-btn" onclick={reset}>{i18n.t('reset')}</button>
 			</div>
 
-			<!-- Suggestions + compare toggle -->
-			<div class="suggestions">
-				{#each SUGGESTIONS as w (w)}
-					<button class="suggestion" class:active={filters.word === w} onclick={() => (filters.word = w)}>{w}</button>
-				{/each}
+			<!-- Compare — its own prominent row -->
+			<div class="cmp-row">
 				{#if showCompare || compareWord}
 					<span class="cmp-field">
+						<svg class="cmp-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+							<path d="M3 3v8M11 3v8M1 7h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+						</svg>
 						<span class="cmp-vs">vs</span>
 						<input
 							class="cmp-input"
@@ -343,12 +351,27 @@ const partyBars = $derived(
 						<button class="cmp-x" onclick={closeCompare} aria-label={i18n.t('cmp_clear')}>✕</button>
 					</span>
 				{:else}
-					<button class="cmp-add" onclick={() => (showCompare = true)}>+ {i18n.t('cmp_add')}</button>
+					<button class="cmp-add" onclick={() => (showCompare = true)}>
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+							<path d="M3 3v8M11 3v8M1 7h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+						</svg>
+						{i18n.t('cmp_add')}
+					</button>
 				{/if}
 			</div>
 
+			<!-- Suggestions -->
+			<div class="suggestions">
+				{#each SUGGESTIONS as w (w)}
+					<button class="suggestion" class:active={filters.word === w} onclick={() => (filters.word = w)}>{w}</button>
+				{/each}
+			</div>
+		</div>
+
+		<!-- ── Filter bar ─────────────────────────────────────────────────── -->
+		<div class="filter-bar glass">
 			<!-- Wahlperioden term chips -->
-			<div class="term-section">
+			<div class="term-section-inner">
 				<TermFilter bind:selected={filters.terms} options={meta.terms} />
 			</div>
 
@@ -434,6 +457,27 @@ const partyBars = $derived(
 							</div>
 							<button class="reset-btn" onclick={closeCompare}>{i18n.t('cmp_exit')}</button>
 						</header>
+						<!-- Party filter — single-select -->
+						{#if compareParties.length > 1}
+							<div class="cmp-parties">
+								<button
+									class="cmp-party-chip"
+									class:on={compareParty === null}
+									onclick={() => (compareParty = null)}
+								>{i18n.t('all_parties')}</button>
+								{#each compareParties as p (p)}
+									<button
+										class="cmp-party-chip"
+										class:on={compareParty === p}
+										style:--chip-c={partyColor(p)}
+										onclick={() => (compareParty = compareParty === p ? null : p)}
+									>
+										<span class="cmp-party-dot" style:background={partyColor(p)}></span>
+										{p}
+									</button>
+								{/each}
+							</div>
+						{/if}
 						{#if seriesB.length}
 							<CompareChart
 								a={{ word: filters.word, color: 'var(--accent)', series: seriesA }}
@@ -609,12 +653,24 @@ const partyBars = $derived(
 		padding-bottom: 3rem;
 	}
 
+	/* ── Search section — visually separated ───────────────────────────── */
+	.search-section {
+		padding: 1.5rem 1.5rem 1.2rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
 	/* ── Filter bar ────────────────────────────────────────────────────── */
 	.filter-bar {
-		padding: 1.4rem 1.5rem 1.1rem;
+		padding: 1rem 1.5rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.85rem;
+	}
+	.term-section-inner {
+		padding-bottom: 0.6rem;
+		border-bottom: 1px solid var(--line);
 	}
 
 	/* Search hero — large, prominent, full-width */
@@ -744,30 +800,43 @@ const partyBars = $derived(
 	}
 
 	/* ── Compare control ────────────────────────────────────────────────── */
-	.cmp-add {
-		font: inherit;
-		font-size: 0.76rem;
-		font-weight: 600;
-		padding: 0.2rem 0.7rem;
-		border-radius: 999px;
-		border: 1px dashed var(--line-3);
-		background: none;
-		color: var(--ink-2);
-		cursor: pointer;
-		transition: color 0.15s, border-color 0.15s;
+	.cmp-row {
+		display: flex;
+		align-items: center;
 	}
-	.cmp-add:hover { color: var(--spark); border-color: var(--spark); }
+	.cmp-add {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		font: inherit;
+		font-size: 0.82rem;
+		font-weight: 600;
+		padding: 0.45rem 1rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--spark) 45%, var(--line-2));
+		background: color-mix(in srgb, var(--spark) 6%, transparent);
+		color: var(--spark);
+		cursor: pointer;
+		transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+	}
+	.cmp-add:hover {
+		background: color-mix(in srgb, var(--spark) 14%, transparent);
+		border-color: var(--spark);
+		box-shadow: 0 0 12px color-mix(in srgb, var(--spark) 20%, transparent);
+	}
+	.cmp-add svg { opacity: 0.8; }
 	.cmp-field {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
-		padding: 0.1rem 0.3rem 0.1rem 0.55rem;
+		gap: 0.4rem;
+		padding: 0.35rem 0.5rem 0.35rem 0.65rem;
 		border-radius: 999px;
 		border: 1px solid color-mix(in srgb, var(--spark) 55%, var(--line-2));
 		background: color-mix(in srgb, var(--spark) 8%, transparent);
 	}
+	.cmp-icon { color: var(--spark); opacity: 0.7; flex-shrink: 0; }
 	.cmp-vs {
-		font-size: 0.68rem;
+		font-size: 0.7rem;
 		font-weight: 700;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -775,12 +844,12 @@ const partyBars = $derived(
 	}
 	.cmp-input {
 		font: inherit;
-		font-size: 0.8rem;
+		font-size: 0.9rem;
 		background: none;
 		border: none;
 		outline: none;
 		color: var(--ink);
-		width: 8.5rem;
+		width: 10rem;
 		padding: 0.2rem 0;
 	}
 	.cmp-input::placeholder { color: var(--ink-3); }
@@ -789,9 +858,9 @@ const partyBars = $derived(
 		background: none;
 		cursor: pointer;
 		color: var(--ink-3);
-		font-size: 0.72rem;
+		font-size: 0.75rem;
 		line-height: 1;
-		padding: 0.2rem 0.25rem;
+		padding: 0.25rem 0.3rem;
 	}
 	.cmp-x:hover { color: var(--spark); }
 	.compare-panel .cmp-title {
@@ -808,11 +877,42 @@ const partyBars = $derived(
 		text-transform: uppercase;
 		color: var(--ink-3);
 	}
-
-	/* ── Wahlperioden chips ─────────────────────────────────────────────── */
-	.term-section {
-		padding-top: 0.75rem;
-		border-top: 1px solid var(--line);
+	/* Compare party chips — single-select filter row */
+	.cmp-parties {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		margin-bottom: 1rem;
+	}
+	.cmp-party-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font: inherit;
+		font-size: 0.74rem;
+		font-weight: 500;
+		padding: 0.25rem 0.7rem;
+		border-radius: 999px;
+		border: 1px solid var(--line-2);
+		background: none;
+		color: var(--ink-3);
+		cursor: pointer;
+		transition: color 0.15s, border-color 0.15s, background 0.15s;
+	}
+	.cmp-party-chip:hover {
+		color: var(--ink);
+		border-color: var(--chip-c, var(--line-3));
+	}
+	.cmp-party-chip.on {
+		color: var(--ink);
+		border-color: var(--chip-c, var(--accent));
+		background: color-mix(in srgb, var(--chip-c, var(--accent)) 12%, transparent);
+	}
+	.cmp-party-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex: none;
 	}
 
 	/* Controls row — count mode only */
