@@ -415,7 +415,6 @@ def top_politicians(
         join = ""
     sql = f"""
         SELECT
-            s.politician_id AS politician_id,
             {name_expr}     AS politician,
             {FACTION_COL}   AS party,
             COUNT(*)        AS speeches
@@ -583,7 +582,7 @@ def search(
         join = ""
     top_politicians = con.execute(
         f"""
-        SELECT m.politician_id AS politician_id, {name_expr} AS politician, m.party AS party, COUNT(*) AS speeches
+        SELECT {name_expr} AS politician, m.party AS party, COUNT(*) AS speeches
         FROM _search_matched m
         {join}
         WHERE m.politician_id != -1 AND m.last_name != ''

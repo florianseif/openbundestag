@@ -600,10 +600,7 @@ const partyBars = $derived(
 								</label>
 							</header>
 							{#if topBars.length}
-								<HBars bars={topBars} valueLabel={i18n.t('speeches')} onclick={(i) => {
-									const d = top[i];
-									if (d) pickPol({ id: d.politician_id, name: d.politician, party: d.party, speeches: d.speeches });
-								}} />
+								<HBars bars={topBars} valueLabel={i18n.t('speeches')} />
 							{:else}
 								<p class="empty">—</p>
 							{/if}
