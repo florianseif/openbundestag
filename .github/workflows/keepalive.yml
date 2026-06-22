@@ -1,0 +1,45 @@
+name: Keep HF Space awake
+
+# Pings the API Space's /health endpoint on a schedule so the free Hugging Face
+# Space never reaches its 48h idle-sleep. This keeps real visitors from hitting
+# the ~40s cold-start wake-up (download + DuckDB pre-warm). It does NOT deploy or
+# change anything — it just sends a request to keep the container warm.
+#
+# To change the cadence, edit the cron below (UTC). Every 6h is well inside the
+# 48h sleep window with margin for an occasionally-skipped run.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # 00:00, 06:00, 12:00, 18:00 UTC
+  workflow_dispatch: {} # allow manual "ping now" from the Actions tab
+
+concurrency:
+  group: hf-keepalive
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      HEALTH_URL: https://missionjupiter-openbundestag-api.hf.space/health
+    steps:
+      - name: Ping /health (waking the Space if asleep)
+        run: |
+          set -uo pipefail
+          # A cold Space takes ~40s to wake, so allow a generous timeout and a
+          # couple of retries. --retry-all-errors covers the 5xx a waking Space
+          # can briefly return before it is ready.
+          http=$(curl -sS -L \
+            --max-time 150 \
+            --retry 3 --retry-delay 30 --retry-all-errors \
+            -o response.txt -w "%{http_code}" \
+            "$HEALTH_URL") || true
+          echo "HTTP $http"
+          echo "Body: $(head -c 300 response.txt)"
+          if [ "$http" != "200" ]; then
+            echo "::error::Keep-alive ping failed (HTTP $http) — the Space may be down."
+            exit 1
+          fi
+          echo "Space is awake and healthy."
