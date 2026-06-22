@@ -7,16 +7,14 @@
 		value: number;
 		color: string;
 	}
-	let { bars, valueLabel = '', onclick }: { bars: Bar[]; valueLabel?: string; onclick?: (i: number) => void } = $props();
+	let { bars, valueLabel = '' }: { bars: Bar[]; valueLabel?: string } = $props();
 
 	const maxVal = $derived(Math.max(1, ...bars.map((b) => b.value)));
 </script>
 
 <div class="bars" style:--n={bars.length}>
 	{#each bars as b, i (b.label + i)}
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="row" class:clickable={!!onclick} style:--i={i} onclick={() => onclick?.(i)}>
+		<div class="row" style:--i={i}>
 			<div class="label" title={b.label}>
 				{b.label}
 				{#if b.sub}<span class="sub">{b.sub}</span>{/if}
@@ -48,15 +46,6 @@
 		gap: 0.7rem;
 		animation: slide 0.5s var(--ease) backwards;
 		animation-delay: calc(var(--i) * 30ms);
-	}
-	.row.clickable {
-		cursor: pointer;
-	}
-	.row.clickable:hover .label {
-		color: var(--ink);
-	}
-	.row.clickable:hover .fill {
-		filter: saturate(1.2) brightness(1.15);
 	}
 	.label {
 		font-size: 0.85rem;

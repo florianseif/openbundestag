@@ -34,7 +34,6 @@ export interface TermCount {
 }
 
 export interface PoliticianCount {
-	politician_id: number;
 	politician: string;
 	party: string;
 	speeches: number;
