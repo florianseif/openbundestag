@@ -1,18 +1,14 @@
-import adapter from '@sveltejs/adapter-cloudflare';
-import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import { fileURLToPath, URL } from 'node:url';
 
+// SPA build for Cloudflare Pages. Output -> dist/ (static). The Svelte app's
+// adapter-cloudflare is gone; deep-link routing is handled by public/_redirects.
 export default defineConfig({
-	plugins: [
-		sveltekit({
-			compilerOptions: {
-				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
-				runes: ({ filename }) =>
-					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
-			},
-
-			// Deployed to Cloudflare Pages. See .github/workflows/deploy-web.yml.
-			adapter: adapter()
-		})
-	]
+	plugins: [vue()],
+	resolve: {
+		alias: {
+			$lib: fileURLToPath(new URL('./src/lib', import.meta.url))
+		}
+	}
 });

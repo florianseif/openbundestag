@@ -1,0 +1,148 @@
+<script setup lang="ts">
+interface Stat {
+	value: string | number;
+	label: string;
+}
+
+const { title, subtitle, description, stats = [], variant = 'default' } = defineProps<{
+	title: string;
+	subtitle: string;
+	description?: string;
+	stats?: Stat[];
+	variant?: 'default' | 'warm' | 'gold';
+}>();
+</script>
+
+<template>
+	<header class="page-hero" :class="{ warm: variant === 'warm', gold: variant === 'gold' }">
+		<div class="hero-glow" aria-hidden="true"></div>
+		<div class="hero-top">
+			<div class="hero-text">
+				<h1 class="grad-text">{{ title }}</h1>
+				<p class="hero-sub">{{ subtitle }}</p>
+				<p v-if="description" class="hero-desc">{{ description }}</p>
+			</div>
+		</div>
+
+		<div v-if="stats.length" class="hero-stats">
+			<span v-for="s in stats" :key="s.label + s.value" class="stat-chip">
+				<span class="stat-val">{{ s.value }}</span>
+				<span v-if="s.label" class="stat-lbl">{{ s.label }}</span>
+			</span>
+		</div>
+	</header>
+</template>
+
+<style scoped>
+	.page-hero {
+		position: relative;
+		margin-bottom: 1.4rem;
+	}
+	/* soft aurora bloom behind the title */
+	.hero-glow {
+		position: absolute;
+		inset: -40% -10% auto -10%;
+		height: 220px;
+		background: radial-gradient(
+			60% 100% at 20% 0%,
+			rgba(107, 145, 255, 0.16),
+			rgba(169, 139, 255, 0.08) 45%,
+			transparent 72%
+		);
+		filter: blur(8px);
+		pointer-events: none;
+		z-index: 0;
+	}
+	.warm .hero-glow {
+		background: radial-gradient(
+			60% 100% at 20% 0%,
+			rgba(255, 90, 90, 0.18),
+			rgba(255, 140, 80, 0.09) 45%,
+			transparent 72%
+		);
+	}
+	.warm h1.grad-text {
+		background: linear-gradient(115deg, #ff6b6b 0%, #ff4e4e 42%, #ffb347 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+	}
+	.gold .hero-glow {
+		background: radial-gradient(
+			60% 100% at 20% 0%,
+			rgba(255, 206, 92, 0.22),
+			rgba(255, 142, 60, 0.10) 45%,
+			transparent 72%
+		);
+	}
+	.gold h1.grad-text {
+		background: linear-gradient(115deg, #ffce5c 0%, #ffaa2a 45%, #ff8e3c 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+	}
+	.hero-top {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 1rem;
+	}
+	.hero-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+	h1 {
+		font-family: var(--display);
+		font-size: clamp(2.2rem, 5vw, 3.4rem);
+		line-height: 1;
+		margin: 0;
+		letter-spacing: -0.01em;
+	}
+	.hero-sub {
+		color: var(--ink-2);
+		font-size: 1rem;
+		margin: 0;
+		max-width: 52ch;
+	}
+	.hero-desc {
+		color: var(--ink-3);
+		font-size: 0.82rem;
+		margin: 0.2rem 0 0;
+		max-width: 68ch;
+		line-height: 1.6;
+	}
+	.hero-stats {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 1rem;
+	}
+	.stat-chip {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.4rem;
+		padding: 0.34rem 0.7rem;
+		border-radius: 999px;
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+	}
+	.stat-val {
+		font-family: var(--display);
+		font-weight: 600;
+		font-size: 0.95rem;
+		color: var(--ink);
+		font-variant-numeric: tabular-nums;
+	}
+	.stat-lbl {
+		font-size: 0.74rem;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		color: var(--ink-3);
+		text-transform: uppercase;
+	}
+</style>

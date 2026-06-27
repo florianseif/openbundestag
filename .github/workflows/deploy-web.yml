@@ -1,13 +1,15 @@
 name: Deploy site to Cloudflare Pages
 
-# Builds the SvelteKit frontend (web/) and deploys it to Cloudflare Pages.
-# PUBLIC_API_BASE must point at the deployed HF Space API.
+# Builds the Vue 3 frontend (web/) and deploys it to Cloudflare Pages.
+# The API base URL must point at the deployed HF Space API.
 #
 # Required secrets:
 #   CLOUDFLARE_API_TOKEN  - token with "Cloudflare Pages: Edit" permission
 #   CLOUDFLARE_ACCOUNT_ID - your Cloudflare account id
 # Required variable (Settings → Variables):
 #   PUBLIC_API_BASE       - e.g. https://missionjupiter-openbundestag-api.hf.space
+#   (exposed to the build as VITE_API_BASE below; you may rename the GitHub
+#    variable to VITE_API_BASE and update the mapping if you prefer.)
 
 on:
   push:
@@ -40,7 +42,7 @@ jobs:
 
       - name: Build
         env:
-          PUBLIC_API_BASE: ${{ vars.PUBLIC_API_BASE }}
+          VITE_API_BASE: ${{ vars.PUBLIC_API_BASE }}
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
@@ -49,4 +51,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web
-          command: pages deploy .svelte-kit/cloudflare --project-name=openbundestag
+          command: pages deploy dist --project-name=openbundestag

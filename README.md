@@ -6,7 +6,7 @@ Explore **word usage across German Bundestag plenary debates** (1949–present, 
 
 ## Quick links
 
-📖 [Architecture diagram](web/src/routes/architecture) (interactive) · 📊 [Streamlit app](#streamlit-app) · 🌐 [SvelteKit website](#website) · 📋 [Data schema](#database-schema) · 🚀 [Contributing](#contributing)
+📖 [Architecture diagram](web/src/views/Architecture.vue) (interactive) · 📊 [Streamlit app](#streamlit-app) · 🌐 [Vue 3 website](#website) · 📋 [Data schema](#database-schema) · 🚀 [Contributing](#contributing)
 
 ---
 
@@ -57,7 +57,7 @@ openbundestag-data.db (created)
   ↓ Ministers (scrape Wikipedia)
   ↓ Finalize (materialize faction_normalized, search_text)
   ↓ Zwischenrufe (extract interjections)
-Ready database → Streamlit + SvelteKit
+Ready database → Streamlit + Vue 3
 ```
 
 **See the [interactive architecture diagram](web/src/routes/architecture) for details on each phase.**
@@ -90,7 +90,7 @@ CDU/CSU (#000000) · SPD (#E3000F) · Grünen (#1AA037) · FDP (#FFED00) · Die 
 
 ---
 
-## Website (SvelteKit + FastAPI)
+## Website (Vue 3 + FastAPI)
 
 A bespoke site at `web/` and `api/` with scrollytelling intro, live explorer, and dark "data-noir" design (obsidian canvas, aurora gradient accent, glass panels).
 
@@ -285,7 +285,7 @@ openbundestag/
 │   ├── scrape_ministers.py # Wikipedia scraper
 │   └── zwischenrufe.py     # Interjection extractor
 ├── api/                    # FastAPI service
-├── web/                    # SvelteKit frontend
+├── web/                    # Vue 3 frontend
 ├── data/                   # Downloaded XML cache (git-ignored)
 └── openbundestag-data.db   # Output database (git-ignored)
 ```

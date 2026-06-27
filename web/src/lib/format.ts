@@ -1,6 +1,6 @@
 // Small formatting + party-colour helpers shared across components.
 
-import type { Lang } from './i18n.svelte';
+import type { Lang } from './i18n';
 
 const FALLBACK_COLOR = '#9b9384';
 
