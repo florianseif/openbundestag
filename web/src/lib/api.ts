@@ -1,11 +1,10 @@
 // Typed client for the OpenBundestag JSON API.
 //
-// The base URL comes from PUBLIC_API_BASE (set in web/.env for dev and as a
+// The base URL comes from VITE_API_BASE (set in web/.env for dev and as a
 // Cloudflare Pages build var in prod). Because the API lives on a free HF Space
 // that sleeps after ~48h idle, the first request can take up to ~1 minute to
 // wake; callers should surface a "waking" state rather than an error.
 
-import { PUBLIC_API_BASE } from '$env/static/public';
 import { prefetchSearch } from './prefetch';
 import type {
 	Meta,
@@ -29,7 +28,7 @@ import type {
 	BeifallSelfOther
 } from './types';
 
-const BASE = (PUBLIC_API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '');
+const BASE = (import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
 export class ApiError extends Error {
 	constructor(

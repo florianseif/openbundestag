@@ -1,10 +1,10 @@
 # OpenBundestag — web
 
-The dedicated public website: a SvelteKit frontend that explores Bundestag
+The dedicated public website: a Vue 3 frontend that explores Bundestag
 word-usage via the [OpenBundestag API](../api). A scrollytelling landing page
 hands off into a live, filterable data explorer.
 
-- **Framework:** SvelteKit 5 (runes) + `@sveltejs/adapter-cloudflare`
+- **Framework:** Vue 3 (`<script setup>`) + Vite + `vue-router`, built as a static SPA
 - **Charts:** bespoke SVG built with `d3-scale` / `d3-shape` (no chart library)
 - **Hosting:** Cloudflare Pages (free, custom domain) → talks to the API on a HF Space
 
@@ -23,40 +23,49 @@ npm run dev            # http://localhost:5173
 Set the API base in `web/.env` (see `.env.example`):
 
 ```
-PUBLIC_API_BASE=http://127.0.0.1:8000
+VITE_API_BASE=http://127.0.0.1:8000
 ```
 
 ## Build / check
 
 ```sh
-npm run check          # svelte-check (types)
-npm run build          # production build → .svelte-kit/cloudflare
+npm run check          # vue-tsc (types)
+npm run build          # production build → dist/
 npm run preview        # preview the build locally
 ```
 
 ## Structure
 
 ```
+index.html                       Vite entry (mounts #app)
 src/
-├── app.css                     design system (tokens, type, layout)
+├── main.ts                      app bootstrap (createApp + router)
+├── router.ts                    vue-router routes (SPA, no SSR)
+├── App.vue                      header + footer + i18n shell
+├── app.css                      design system (tokens, type, layout)
 ├── lib/
-│   ├── api.ts                  typed fetch client (PUBLIC_API_BASE)
+│   ├── api.ts                  typed fetch client (VITE_API_BASE)
 │   ├── types.ts                API response shapes
-│   ├── i18n.svelte.ts          DE/EN strings + reactive lang store (runes → .svelte.ts)
+│   ├── i18n.ts                 DE/EN strings + reactive lang store (reactive singleton)
 │   ├── format.ts               number/date + party colour helpers
+│   ├── prefetch.ts             instant payloads for popular default-filter queries
 │   ├── stories.json            precomputed landing snapshot (regenerate from the DB)
-│   └── components/             charts, filters, drawer, language toggle
-└── routes/
-    ├── +layout.svelte          header + footer + i18n
-    ├── +page.svelte            landing (hero + scrollytelling)
-    └── explore/+page.svelte    the explorer (SSR off)
+│   └── components/             *.vue charts, filters, modal, language toggle
+└── views/                       route components
+    ├── Home.vue                landing (hero + scrollytelling)
+    ├── Explore.vue             the explorer
+    ├── Beifall.vue             applause analytics
+    ├── Zwischenrufe.vue        heckling analytics
+    ├── About.vue               about page
+    └── Architecture.vue        pipeline diagram
 ```
 
-The drill-down drawer (`SpeechDrawer.svelte`) is wired to `/api/speeches` but the
-full reader/download UI lands in a later phase. Snippets require a non-slim DB.
+`public/_redirects` (`/* /index.html 200`) gives the SPA deep-link fallback on
+Cloudflare Pages. The `$lib` alias is configured in `vite.config.ts` + `tsconfig.json`.
 
 ## Deploy
 
 GitHub Actions (`.github/workflows/deploy-web.yml`) builds and pushes to
 Cloudflare Pages on changes to `web/**`. Set `vars.PUBLIC_API_BASE` to the HF
-Space API URL and the `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets.
+Space API URL (exposed to the build as `VITE_API_BASE`) and the
+`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets.
